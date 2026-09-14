@@ -1,60 +1,116 @@
-﻿# Database schema plan
+﻿# Initial database schema: migration review
 
-Planning only: no tables, migrations, grants or RLS policies have been created.
-RLS is mandatory before any application table is exposed through the Data API.
+Status: supabase/migrations/001_initial_schema.sql is prepared locally only.
+It has NOT been executed locally or remotely. No policies are live because of this
+task. A separate security review and explicit approval must precede application.
+No seed data, auth implementation or storefront migration is included.
 
-## Proposed tables
+## Tables and relationships
 
-All application tables use UUID primary keys and created_at/updated_at timestamptz.
-Database defaults set creation times; database-controlled triggers update updated_at.
-Index foreign keys used in ownership checks and joins.
-
-| Table | Likely fields and relationships |
+| Table | Design |
 | --- | --- |
-| products | id UUID PK; unique slug; name; description; club/team, league, country, category, season; image paths; is_active; is_new, is_featured, is_best_seller; currency fixed to NGN; price_kobo and nullable original_price_kobo as nonnegative bigint values. Archive products rather than deleting order history. |
-| profiles | id UUID PK and FK to auth.users.id; display_name; phone. Keep authentication email/password management in Supabase Auth. No user-editable administrator role. |
-| addresses | id UUID PK; user_id FK to profiles.id; recipient_name; phone; address_line1/2; city; Nigerian state; optional postal_code; country_code; is_default. Ownership must remain immutable to customers. |
-| orders | id UUID PK; unique order reference; user_id FK to profiles.id; currency; subtotal_kobo, shipping_kobo, total_kobo; constrained order_status and payment_status; shipping-address snapshot; optional source address_id; paid_at. Server creates trusted totals/statuses. Retention and account-deletion handling require a deliberate policy. |
-| order_items | id UUID PK; order_id FK to orders.id; product_id FK to products.id; future variant_id; product name/SKU/size snapshots; positive integer quantity; unit_price_kobo and line_total_kobo snapshots. Preserve purchased details even when catalogue data changes. |
+| products | UUID PK, unique nonblank URL-safe slug, required name/category/season, text description and image paths, optional club/league/country, empty-array defaults for sizes/images, merchandising/stock/active flags, NGN money, timestamps. Categories and size labels match the current frontend model. |
+| profiles | UUID PK also FK to auth.users.id; full_name and phone only, plus timestamps. Auth credentials remain in Supabase Auth. Profile provisioning is deferred; customers cannot insert rows yet. |
+| addresses | UUID PK; required user_id directly references auth.users.id; recipient/contact/address fields; country fixed to Nigeria; timestamps. At most one default address per user. |
+| orders | UUID PK; nullable user_id references auth.users.id; order/payment status, NGN amounts, complete customer and delivery-address snapshots, optional unique payment_reference, timestamps. Payment reference is visible only to the owning customer through RLS (and trusted administrative roles). |
+| order_items | UUID PK; order_id FK; nullable product_id FK; name/slug/size and price snapshots, quantity 1–10, creation timestamp. Items are immutable to browser roles. |
 
-## Prices, snapshots and inventory
+All temporal fields use timestamptz with now(). Minimal SECURITY INVOKER triggers
+update updated_at on the four mutable tables. Their search_path is empty and
+pg_catalog.now() is qualified. Clients receive no direct function EXECUTE privilege.
+There is no SECURITY DEFINER function, dynamic SQL or profile signup trigger.
 
-Use integer kobo in persistent storage, not floating-point Naira. The current frontend
-uses Naira; a later typed adapter must convert deliberately. Check nonnegative values,
-currency consistency, safe numeric bounds and price relationships in the database.
-A discounted original price, when supplied, should exceed the current price.
+## Retention
 
-Create orders and their lines atomically from authoritative product/variant prices.
-Recalculate totals on the server; browser cart values are only display hints.
-Keep address, item price and product-description snapshots stable after purchase;
-editing a saved address must not change a historical order.
+Deleting an auth user cascades only their profile and saved addresses. Their orders
+retain snapshots and become user_id NULL, inaccessible to all customer JWTs.
+Deleting a saved address cannot affect an order: there is no address FK.
+Deleting a product nulls order_items.product_id but preserves the item snapshot.
+Deleting an order cascades its items, deliberately; browser roles cannot delete orders.
+Trusted operations must follow a separately reviewed retention/account-erasure policy,
+because personal order snapshots outlive auth users. Prefer archiving products and
+retaining financial records to ad hoc deletion.
 
-Before real checkout, introduce product_variants (unique product_id + size/SKU)
-with stock quantity and active state. Use transactional reservations/atomic stock
-updates and idempotent payment processing to prevent overselling or duplicate orders.
-The current inStock flag and client quantity maximum are not inventory enforcement.
-No inventory tables or payment code are implemented in this task.
+## Money and state integrity
 
-## Mandatory future RLS and grants
+All stored monetary fields are bigint kobo, with nonnegative checks and NGN currency.
+An original product price must be NULL or greater than the current price.
+Order total must equal subtotal plus delivery fee. Line total must equal unit price
+times quantity; exact numeric casts in checks avoid bigint intermediate overflow.
+No floating-point money is stored. Bigint values need safe handling during future
+JavaScript mapping; do not blindly cast values beyond Number.MAX_SAFE_INTEGER.
 
-Enable RLS explicitly through reviewed migrations on every exposed table.
-Start with no access, then grant only required table/column operations.
-Test anonymous access and at least two distinct user identities.
+Order statuses: pending, processing, shipped, delivered, cancelled.
+Payment statuses: unpaid, pending, paid, failed, refunded.
+Checks constrain vocabulary, not state transitions, payment proof or consistency
+between status and payment_status. Future trusted checkout/payment code must validate
+those transitions and use idempotency. The unique nullable payment_reference prevents
+accidental reuse but is not a complete payment-attempt model.
 
-| Table | Planned policy |
-| --- | --- |
-| products | anon/authenticated may SELECT only is_active rows. No customer INSERT/UPDATE/DELETE. Catalogue writes require a verified administrator operation or tightly scoped trusted server process. |
-| profiles | authenticated may SELECT their own id = auth.uid() row and UPDATE allowed personal fields on that row. Use USING and WITH CHECK; prevent ID/ownership changes. Provision rows through a trusted signup mechanism; do not permit self-assigned roles. |
-| addresses | authenticated may SELECT/INSERT/UPDATE/DELETE only where user_id = auth.uid(), with both existing-row and new-row checks. |
-| orders | authenticated may SELECT their own user_id = auth.uid() rows. No direct customer writes to totals, ownership, payment state or fulfillment state. Creation/status changes use validated server operations. |
-| order_items | SELECT allowed only when an owning order exists with orders.user_id = auth.uid(). No direct customer writes to prices, quantities or snapshots after creation. |
+The database does NOT yet verify order subtotal against the sum of all items,
+or snapshot price against a current catalogue price. All order writes are denied
+to clients. Future trusted checkout must calculate prices, shipping and totals and
+insert orders/items atomically from trusted data. Browser cart totals remain hints.
+No price or inventory authorization should depend on client-side validation.
 
-Do not infer admin privileges from user-editable profile fields or user metadata.
-Keep trusted roles in protected claims/server-managed records. A privileged backend
-key bypasses RLS, so every future privileged operation needs its own authorization,
-input validation and audit trail. These foundations do not include such a key.
+Before checkout, design product_variants with product/size/SKU uniqueness and stock,
+then add transactional reservations/atomic stock updates. The current in_stock flag
+and quantity cap are not inventory validation.
 
-When introducing functions, prefer invoker permissions; any SECURITY DEFINER function
-requires a fixed search_path, narrow EXECUTE grants and explicit ownership checks.
-Grants/column restrictions complement RLS, which controls rows rather than protected
-field changes. RLS is planned here, not deployed or tested against a live database.
+## RLS and privilege matrix (prepared, not active)
+
+| Table | anon | authenticated |
+| --- | --- | --- |
+| products | SELECT active rows only | SELECT active rows only |
+| profiles | No access | SELECT own row; UPDATE own full_name/phone only |
+| addresses | No access | SELECT/INSERT/UPDATE/DELETE own rows |
+| orders | No access | SELECT own rows only |
+| order_items | No access | SELECT only through an order owned by auth.uid() |
+
+Every table explicitly enables RLS. Update policies include USING and WITH CHECK.
+Address INSERT has an ownership WITH CHECK. Column-level grants prevent ownership,
+primary-key and timestamp tampering even within a user's row. Profile insertion and
+deletion are deferred. No broad USING(true), client admin policy or browser order write
+is introduced. Parent orders also have RLS, so the order_items EXISTS check cannot
+expose another user's order through this policy.
+
+Object-scoped REVOKE ALL removes inherited default grants from PUBLIC, anon and
+authenticated for the five NEW tables, followed by the explicit grants above.
+This also removes TRUNCATE/TRIGGER/REFERENCES privileges that row policies alone do
+not constrain. No existing unrelated tables, schema grants, default privileges or
+privileged roles are changed. Supabase roles, auth.users and auth.uid() are prerequisites.
+The deployment owner must have permission to create objects and triggers.
+No broad function execution is granted.
+
+RLS does not constrain database owners/superusers or roles with BYPASSRLS.
+No new bypass role/key is created. Future privileged server code requires independent
+authorization and audit controls; never derive admin status from editable profiles.
+
+## Indexes and constraints
+
+UUID PKs and unique slug/payment_reference create their own indexes. Explicit indexes:
+products.is_active, addresses.user_id, orders.user_id, orders.created_at DESC,
+order_items.order_id and order_items.product_id. A separate partial unique address
+index enforces one default per user. Revisit the low-cardinality active index with
+real query plans; avoid speculative league/category indexes until queries justify them.
+
+Required customer/address text is nonblank. Slugs use lowercase URL-safe words.
+Arrays are non-null and empty by default; populated arrays must be one-dimensional,
+without null elements; sizes use known labels. Image strings are not authorization:
+future asset ingestion and rendering must validate allowed paths/hosts. Phone, email
+and address semantics need server validation; nonblank checks do not verify identity
+or deliverability.
+
+## Review and later application
+
+Read docs/rls-test-plan.md before approval. This one-time migration intentionally uses
+CREATE without IF NOT EXISTS so unexpected existing objects fail rather than silently
+accepting schema drift. BEGIN/COMMIT keep schema, privileges and RLS atomic.
+No rollback/drop script is provided because it could destroy future orders.
+After approved application, test real role-based access and constraints in a disposable
+environment, then generate Database types. The current empty TypeScript schema and
+static product catalogue are unchanged until a later integration task.
+
+References:
+- [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [PostgreSQL grants](https://www.postgresql.org/docs/current/sql-grant.html)
