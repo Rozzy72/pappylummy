@@ -14,7 +14,7 @@ export function WishlistButton({
   productId, productName, showLabel = false, className = "",
 }: WishlistButtonProps) {
   const hydrated = useWishlistHydration();
-  const saved = useWishlistStore((state) => state.items.includes(productId));
+  const saved = useWishlistStore((state) => state.isWishlisted(productId));
   const toggleItem = useWishlistStore((state) => state.toggleItem);
   const isSaved = hydrated && saved;
   const label = isSaved ? `Remove ${productName} from wishlist` : `Save ${productName} to wishlist`;

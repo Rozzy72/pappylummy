@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
+import { normalizeProductId } from "@/lib/products/identity";
 import { products } from "@/data/products";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { useWishlistHydration } from "@/components/wishlist/use-wishlist-hydration";
@@ -10,7 +11,7 @@ export function WishlistContents() {
   const hydrated = useWishlistHydration();
   const items = useWishlistStore((state) => state.items);
   const clearWishlist = useWishlistStore((state) => state.clearWishlist);
-  const savedProducts = products.filter((product) => items.includes(product.id));
+  const savedProducts = products.filter((product) => items.includes(normalizeProductId(product.id) ?? ""));
 
   if (!hydrated) return <p role="status" className="py-12 text-neutral-600">Loading your wishlist…</p>;
 

@@ -1,7 +1,8 @@
 ﻿import { ShopCatalogue } from "@/components/product/shop-catalogue";
-import { products } from "@/data/products";
+import { getProducts } from "@/lib/products/queries";
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const products = await getProducts();
   return (
     <>
       <header>

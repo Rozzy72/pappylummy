@@ -2,7 +2,8 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { products } from "@/data/products";
+import { normalizeProductId } from "@/lib/products/identity";
+import { PRODUCT_ID_PERSISTENCE_VERSION, reconcileWishlist } from "./reconcile-persisted-items";
 
 type WishlistState = {
   items: string[];
@@ -14,15 +15,6 @@ type WishlistState = {
   isWishlisted: (productId: string) => boolean;
   totalWishlistItems: () => number;
 };
-
-const knownIds = new Set(products.map((product) => product.id));
-
-function restoreItems(saved: unknown): string[] {
-  if (typeof saved !== "object" || saved === null || !("items" in saved) || !Array.isArray(saved.items)) return [];
-  return [...new Set(saved.items.filter(
-    (id: unknown): id is string => typeof id === "string" && knownIds.has(id),
-  ))];
-}
 
 // A blocked or full storage area should leave the in-memory wishlist usable.
 const storage: StateStorage = {
@@ -43,12 +35,13 @@ export const useWishlistStore = create<WishlistState>()(
       items: [],
       hydrated: false,
       addItem: (productId) => {
-        if (!get().hydrated || !knownIds.has(productId) || get().items.includes(productId)) return;
-        set((state) => ({ items: [...state.items, productId] }));
+        const id = normalizeProductId(productId);
+        if (!get().hydrated || !id || get().items.includes(id)) return;
+        set((state) => ({ items: [...state.items, id] }));
       },
       removeItem: (productId) => {
         if (!get().hydrated) return;
-        set((state) => ({ items: state.items.filter((id) => id !== productId) }));
+        set((state) => ({ items: state.items.filter((id) => id !== normalizeProductId(productId)) }));
       },
       toggleItem: (productId) => {
         if (get().isWishlisted(productId)) get().removeItem(productId);
@@ -57,17 +50,21 @@ export const useWishlistStore = create<WishlistState>()(
       clearWishlist: () => {
         if (get().hydrated) set({ items: [] });
       },
-      isWishlisted: (productId) => get().items.includes(productId),
+      isWishlisted: (productId) => {
+        const id = normalizeProductId(productId);
+        return id !== undefined && get().items.includes(id);
+      },
       totalWishlistItems: () => get().items.length,
     }),
     {
       name: "naija-kits-wishlist",
-      version: 1,
+      version: PRODUCT_ID_PERSISTENCE_VERSION,
+      migrate: (saved: unknown) => ({ items: reconcileWishlist(saved) }),
       storage: createJSONStorage(() => storage),
       skipHydration: true,
       // Persist IDs only: names, prices, images and URLs remain catalogue data.
       partialize: (state) => ({ items: state.items }),
-      merge: (saved: unknown, current) => ({ ...current, items: restoreItems(saved) }),
+      merge: (saved: unknown, current) => ({ ...current, items: reconcileWishlist(saved) }),
     },
   ),
 );

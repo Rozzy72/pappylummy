@@ -2,11 +2,12 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { products } from "@/data/products";
+import { normalizeProductId, resolveProduct } from "@/lib/products/identity";
+import { MAX_CART_QUANTITY, PRODUCT_ID_PERSISTENCE_VERSION, reconcileCart, validQuantity } from "./reconcile-persisted-items";
 import type { CartItem } from "@/types/cart";
 import type { JerseySize } from "@/types/product";
 
-export const MAX_CART_QUANTITY = 10;
+export { MAX_CART_QUANTITY } from "./reconcile-persisted-items";
 
 type CartState = {
   items: CartItem[];
@@ -16,36 +17,6 @@ type CartState = {
   updateQuantity: (productId: string, selectedSize: JerseySize, quantity: number) => void;
   clearCart: () => void;
 };
-
-function validQuantity(quantity: number): boolean {
-  return Number.isInteger(quantity) && quantity >= 1 && quantity <= MAX_CART_QUANTITY;
-}
-
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function restoreItems(saved: unknown): CartItem[] {
-  if (!record(saved) || !Array.isArray(saved.items)) return [];
-  const items: CartItem[] = [];
-  for (const entry of saved.items) {
-    if (!record(entry) || typeof entry.quantity !== "number" || !validQuantity(entry.quantity)) continue;
-    const product = products.find((candidate) => candidate.id === entry.productId);
-    if (!product?.inStock) continue;
-    const size = product.sizes.find((candidate) => candidate === entry.selectedSize);
-    if (!size) continue;
-    const existing = items.find((item) => item.productId === product.id && item.selectedSize === size);
-    if (existing) {
-      existing.quantity = Math.min(MAX_CART_QUANTITY, existing.quantity + entry.quantity);
-    } else {
-      items.push({
-        productId: product.id, slug: product.slug, name: product.name,
-        image: product.image, price: product.price, selectedSize: size, quantity: entry.quantity,
-      });
-    }
-  }
-  return items;
-}
 
 // Storage can be unavailable (privacy settings/quota); retain a usable memory cart.
 const safeStorage: StateStorage = {
@@ -67,13 +38,13 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       addItem: (productId, selectedSize, quantity) => {
         if (!get().hydrated || !validQuantity(quantity)) return false;
-        const product = products.find((candidate) => candidate.id === productId);
+        const product = resolveProduct(productId);
         if (!product?.inStock || !product.sizes.includes(selectedSize)) return false;
-        const existing = get().items.find((item) => item.productId === productId && item.selectedSize === selectedSize);
+        const existing = get().items.find((item) => item.productId === normalizeProductId(productId) && item.selectedSize === selectedSize);
         if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) return false;
         set((state) => ({
           items: existing
-            ? state.items.map((item) => item.productId === productId && item.selectedSize === selectedSize
+            ? state.items.map((item) => item.productId === normalizeProductId(productId) && item.selectedSize === selectedSize
               ? { ...item, quantity: item.quantity + quantity } : item)
             : [...state.items, {
               productId: product.id, slug: product.slug, name: product.name,
@@ -84,21 +55,22 @@ export const useCartStore = create<CartState>()(
       },
       removeItem: (productId, selectedSize) => {
         if (!get().hydrated) return;
-        set((state) => ({ items: state.items.filter((item) => item.productId !== productId || item.selectedSize !== selectedSize) }));
+        set((state) => ({ items: state.items.filter((item) => item.productId !== normalizeProductId(productId) || item.selectedSize !== selectedSize) }));
       },
       updateQuantity: (productId, selectedSize, quantity) => {
         if (!get().hydrated || !validQuantity(quantity)) return;
-        set((state) => ({ items: state.items.map((item) => item.productId === productId && item.selectedSize === selectedSize ? { ...item, quantity } : item) }));
+        set((state) => ({ items: state.items.map((item) => item.productId === normalizeProductId(productId) && item.selectedSize === selectedSize ? { ...item, quantity } : item) }));
       },
       clearCart: () => { if (get().hydrated) set({ items: [] }); },
     }),
     {
       name: "naija-kits-cart",
-      version: 1,
+      version: PRODUCT_ID_PERSISTENCE_VERSION,
+      migrate: (saved: unknown) => ({ items: reconcileCart(saved) }),
       storage: createJSONStorage(() => safeStorage),
       skipHydration: true,
       partialize: (state) => ({ items: state.items }),
-      merge: (saved: unknown, current) => ({ ...current, items: restoreItems(saved) }),
+      merge: (saved: unknown, current) => ({ ...current, items: reconcileCart(saved) }),
     },
   ),
 );

@@ -3,7 +3,9 @@ import { ProductActions } from "@/components/product/product-actions";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductGrid } from "@/components/product/product-grid";
 import { WishlistButton } from "@/components/product/wishlist-button";
-import { getProductBySlug, getRelatedProducts } from "@/lib/products";
+import { notFound } from "next/navigation";
+import { getRelatedProducts } from "@/lib/products";
+import { getProductBySlug, getProducts } from "@/lib/products/queries";
 import { formatCurrency } from "@/utils/format-currency";
 import { getTeam } from "@/utils/product-catalogue";
 
@@ -13,7 +15,8 @@ type ProductPageProps = {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
+  if (!product) notFound();
   return {
     title: `${product.name} | Naija Kits`,
     description: product.description,
@@ -22,8 +25,9 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
-  const relatedProducts = getRelatedProducts(product);
+  const product = await getProductBySlug(slug);
+  if (!product) notFound();
+  const relatedProducts = getRelatedProducts(product, await getProducts());
   const isOnSale = product.originalPrice !== undefined && product.originalPrice > product.price;
 
   return (

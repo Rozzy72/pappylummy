@@ -1,8 +1,9 @@
 ﻿import Link from "next/link";
 import { ProductGrid } from "@/components/product/product-grid";
-import { products } from "@/data/products";
+import { getProducts } from "@/lib/products/queries";
 
-export function NewArrivals() {
+export async function NewArrivals() {
+  const products = await getProducts();
   const newArrivals = products.filter((product) => product.isNew === true).slice(0, 4);
 
   return (

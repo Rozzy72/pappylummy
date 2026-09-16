@@ -1,0 +1,12 @@
+{
+  "state": {
+    "items": [
+      {
+        "productId": "jersey-001",
+        "selectedSize": "XL",
+        "quantity": 2
+      }
+    ]
+  },
+  "version": 1
+}
