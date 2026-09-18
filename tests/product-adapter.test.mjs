@@ -13,13 +13,14 @@ async function load(relative, name) {
   const source = readFileSync(new URL(relative, import.meta.url), "utf8");
   const output = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
+  }).outputText.replace("@/utils/product-image", "./product-image.mjs");
   const path = join(temp, name + ".mjs");
   writeFileSync(path, output);
   return import(pathToFileURL(path).href);
 }
+await load("../src/utils/product-image.ts", "product-image");
 const { productRowToProduct: adapt, koboToNaira, isProductSlug } = await load("../src/lib/products/adapter.ts", "adapter");
-const { products } = await load("../src/data/products.ts", "products");
+const { products } = await load("./fixtures/products.ts", "products");
 const seed = readFileSync(new URL("../supabase/seeds/001_products.sql", import.meta.url), "utf8");
 const columns = seed.match(/INSERT INTO public.products \(\s*([\s\S]*?)\) VALUES/)[1].split(",").map(s => s.trim());
 function parse(value) {
@@ -68,10 +69,10 @@ test("categories and every size validated without casts", () => {
 test("local paths only, including additional images; null primary uses placeholder", () => {
   assert.equal(adapt({...row, image_path: null}).image, "/products/placeholder.svg");
   for (const path of ["https://example.com/a.jpg", "//example.com/a.jpg", "/products/../a.jpg", "/products/%2e%2e.jpg", "/products/a.jpg?x=1", "", "javascript:alert(1)"]) {
-    assert.throws(() => adapt({...row, image_path: path}));
-    assert.throws(() => adapt({...row, images: [path]}));
+    assert.equal(adapt({...row, image_path: path}).image, "/products/placeholder.svg");
+    assert.deepEqual(adapt({...row, images: [path]}).images, []);
   }
-  assert.throws(() => adapt({...row, images: null}));
+  assert.deepEqual(adapt({...row, images: null}).images, []);
 });
 test("arrays are copied and input is not mutated", () => {
   const input = {...row, sizes: Object.freeze(["M"]), images: Object.freeze(["/products/placeholder.svg"])};
@@ -84,4 +85,14 @@ test("unsafe slugs and unsupported currency rejected", () => {
   for (const slug of ["../x", "x?y=1", "", null]) assert.equal(isProductSlug(slug), false);
   assert.throws(() => adapt({...row, slug: "../x"}));
   assert.throws(() => adapt({...row, currency: "USD"}));
+});
+
+test("adapter preserves owned Storage references and safely filters gallery", () => {
+  const main = row.id + "/main-dev-v1.webp";
+  const valid = row.id + "/front-v2.webp";
+  const foreign = "698ac8ab-fc88-4dd8-a403-23c0fb13af7d/main-v1.webp";
+  const result = adapt({...row, image_path: main, images: [main, foreign, null, valid, valid]});
+  assert.equal(result.image, main);
+  assert.deepEqual(result.images, [valid]);
+  assert.equal(adapt({...row, image_path: foreign}).image, "/products/placeholder.svg");
 });

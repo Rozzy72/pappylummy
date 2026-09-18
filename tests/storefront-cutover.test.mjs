@@ -33,7 +33,7 @@ function load(path){
    return 'require('+JSON.stringify(dependency)+')';
  });writeFileSync(output,result);return output;
 }
-const {products}=require(load("src/data/products.ts"));
+const {products}=require(load("tests/fixtures/products.ts"));
 const {normalizeProductId}=require(load("src/lib/products/identity.ts"));
 let rows=products.map(p=>({id:normalizeProductId(p.id),name:"API: "+p.name,slug:p.slug,description:p.description,price_kobo:p.price*100,original_price_kobo:p.originalPrice===undefined?null:p.originalPrice*100,image_path:p.image,images:p.images,club:p.club??null,league:p.league??null,country:p.country??null,category:p.category,season:p.season,sizes:p.sizes,is_new:p.isNew,is_featured:p.isFeatured,is_best_seller:p.isBestSeller,in_stock:p.inStock,is_active:true,currency:"NGN"}));
 let fail=false;let calls=[];
@@ -73,9 +73,9 @@ test("UUID catalogue retains combined filters and all sorting modes",async()=>{
 });
 test("detail/metadata map valid UUID row; related section uses one catalogue request",async()=>{
  calls=[];const tree=await Detail(props('arsenal-home'));assert.equal(calls.length,2);
- const action=elements(tree).find(e=>e.type==='ProductActions');assert.equal(action.props.productId,normalizeProductId('jersey-002'));
+ const action=elements(tree).find(e=>e.type==='ProductActions');assert.equal(action.props.product.id,normalizeProductId('jersey-002'));
  const metadata=await generateMetadata(props('arsenal-home'));assert.equal(metadata.title,'API: Arsenal Red Home Supporter Jersey | Naija Kits');
- const related=elements(tree).find(e=>e.type==='ProductGrid').props.products;assert(related.length<=4);assert(related.every(p=>p.id!==action.props.productId&&p.name.startsWith('API: ')));
+ const related=elements(tree).find(e=>e.type==='ProductGrid').props.products;assert(related.length<=4);assert(related.every(p=>p.id!==action.props.product.id&&p.name.startsWith('API: ')));
 });
 test("invalid, missing and inactive products take not-found path",async()=>{
  const before=calls.length;assert.equal(await queries.getProductBySlug('../bad'),null);assert.equal(calls.length,before);
@@ -90,9 +90,24 @@ test("related ranking is deterministic even if input order changes",async()=>{
 });
 test("AC Milan is publicly listed but passes unavailable state to actions",async()=>{
  assert((await queries.getProducts()).some(p=>p.slug==='ac-milan-home'));
- const action=elements(await Detail(props('ac-milan-home'))).find(e=>e.type==='ProductActions');assert.equal(action.props.inStock,false);
- const {useCartStore}=require(load('src/store/cart-store.ts'));useCartStore.setState({hydrated:true});assert.equal(useCartStore.getState().addItem(action.props.productId,'M',1),false);
+ const action=elements(await Detail(props('ac-milan-home'))).find(e=>e.type==='ProductActions');assert.equal(action.props.product.inStock,false);
+ const {useCartStore}=require(load('src/store/cart-store.ts'));useCartStore.setState({hydrated:true});assert.equal(useCartStore.getState().addItem(action.props.product,'M',1),false);
 });
 test("query errors fail visibly without raw diagnostics or static fallback",async()=>{
  fail=true;try{await assert.rejects(NewArrivals(),{message:'Unable to load products.'});await assert.rejects(Shop(),{message:'Unable to load products.'});await assert.rejects(Detail(props('arsenal-home')),{message:'Unable to load product.'});}finally{fail=false;}
+});
+
+
+test('cart and wishlist server pages each fetch one current adapted snapshot', async()=>{
+ const Cart=require(load('src/app/cart/page.tsx')).default;
+ const Wishlist=require(load('src/app/wishlist/page.tsx')).default;
+ for(const [Page,name] of [[Cart,'CartContents'],[Wishlist,'WishlistContents']]) {
+  calls=[];const tree=await Page();assert.equal(calls.length,1);
+  const snapshot=elements(tree).find(e=>e.type===name).props.products;
+  assert.equal(snapshot.length,12);assert(snapshot.every(p=>p.name.startsWith('API: ')));
+  fail=true;try{assert.equal(elements(await Page()).find(e=>e.type===name).props.products,null);}finally{fail=false;}
+  const before=rows;rows=[];try{assert.deepEqual(elements(await Page()).find(e=>e.type===name).props.products,[]);}finally{rows=before;}
+  rows=rows.map((r,i)=>i===0?{...r,currency:'BAD'}:r);
+  try{assert.equal(elements(await Page()).find(e=>e.type===name).props.products,null);}finally{rows=before;}
+ }
 });

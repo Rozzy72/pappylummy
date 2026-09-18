@@ -1,60 +1,41 @@
-# Cart and wishlist ID migration (Task 12D)
+# Cart and wishlist persistence (Task 12F)
 
-Task 12E update: homepage, shop and product detail reads now use the server query layer.
-See storefront-cutover.md. The static identity/persistence bridge remains; descriptions
-below of a pending cutover record the earlier foundation stage.
+Both stores use version 3, with skipHydration and client-effect hydration.
+Cart persists only productId, selectedSize and quantity. Wishlist persists canonical
+UUID candidates only. No catalogue metadata or snapshot is persisted.
 
-The storefront still reads src/data/products.ts. No Supabase retrieval, credentials,
-API calls, schema changes or checkout processing are involved.
+Versions 1 and 2 migrate through identity-only legacy mappings. Same-version data
+is also structurally reconciled. Malformed entries and unsupported migration versions
+are rejected. Duplicate cart lines cap at 10; different sizes remain separate.
+Quantities must be integers from 1 to 10; size syntax is validated independently
+of current product availability. Unknown valid UUIDs remain candidates, not products.
 
-## Identity and compatibility
+The 12 legacy ID-to-UUID mappings remain in src/lib/products/identity.ts. They carry
+no product metadata and do not restrict future catalogue UUIDs. Retire them only
+when support for dormant historical browser storage is explicitly ended.
 
-src/lib/products/identity.ts holds the single runtime legacy-ID-to-UUID mapping
-reviewed in product-seed.md. It resolves either ID form only when backed by the
-current trusted static catalogue and exposes canonical UUID Product identities.
-The original catalogue IDs are unchanged. Unknown IDs, including valid-looking
-UUIDs and object-property names, are rejected. Mapping lookup uses Map.
+Cart/wishlist server pages request one current catalogue snapshot through the existing
+query and adapter. Client components join selections by UUID without mutating them.
+Missing/inactive products are generic removable selections, with no fabricated image,
+name, price or URL. Size changes and stock changes preserve selections but disable
+increment/proceed actions. Current metadata is used only for known products.
 
-Cart operations normalize incoming IDs; reconstructed cart lines use UUIDs. Wishlist
-operations and isWishlisted normalize both forms. Wishlist buttons use isWishlisted,
-and the wishlist product filter normalizes static IDs. Header counts are still based
-on quantities and item counts, so require no changes. Both hydration hooks retain
-skipHydration and the existing once-per-store client-effect pattern.
+Failed reads/adapter validation produce null, distinct from a successful empty array.
+Failure renders a safe retry, retains selections and hides price/image/summary data.
+Retry refreshes the server snapshot. No static fallback exists. Header counts reflect
+saved selections, including unavailable ones. Snapshots are not realtime inventory.
 
-## Persistence version 2
-
-The keys remain naija-kits-cart and naija-kits-wishlist, with the existing Zustand
-state/items envelope. Both use version 2 and migrate at hydration. Reconciliation
-also runs during merge, so same-version storage is never trusted. Only items are
-persisted; hydrated and store functions never come from storage.
-
-Known legacy IDs become UUIDs; known UUIDs are retained. Cart entries require an
-in-stock catalogue product, a current product size, and integer quantity 1–10.
-Malformed entries and invalid quantities are discarded. Duplicate UUID+size lines
-merge in first-seen order with combined quantity capped at 10. Different sizes stay
-separate. All names, slugs, image paths and display prices are rebuilt from the
-catalogue. Wishlist IDs are deduplicated in first-seen order. Reconciliation produces
-the same result when repeated and does not mutate input state.
-
-The existing guarded storage and hydration recovery contain malformed JSON and
-storage-access failures. Corrupt initial storage leaves a usable empty state;
-reconciliation rejects invalid parsed shapes. No persisted code or paths execute.
-The compatibility catalogue is local and available synchronously; no network failure
-can be mistaken for an empty catalogue in this task. Task 12E must coordinate replacing
-that source and must not wipe persisted items when a catalogue fetch fails.
-
-## Checkout boundary
-
-Future checkout submits only required product identifiers, selected options and
-quantities. The server must retrieve authoritative products, check publication,
-stock and sizes, obtain integer-kobo pricing and calculate totals itself. Browser
-prices and totals remain display data only.
+Available-items subtotals exclude unresolved, out-of-stock and invalid-size lines.
+These totals remain display-only. Future checkout must reload products on the server,
+validate publication/size/stock, obtain trusted integer-kobo prices and calculate totals.
 
 ## Verification
 
-Run node tests/product-id-migration.test.mjs. Tests exercise the real Zustand stores
-with isolated in-memory storage plus the shared reconciliation functions. They cover
-all 12 mappings, rejected IDs and shapes, quantity/size validation, duplicate caps,
-idempotence, metadata replacement, version-1 hydration, repeated version-2 rehydration,
-legacy-ID operations and malformed JSON. This is a local persistence simulation;
-no live browser or Supabase is needed. Run the adapter tests, lint and TypeScript too.
+Run product-id-migration, cart-wishlist-catalogue, storefront-cutover, product-adapter
+and product-image tests directly with node. Tests use isolated simulated storage and
+mocked API rows, never real environment values or database mutations.
+
+Browser checks still required: migrate v1/v2 disposable storage, inspect v3 selection-only
+payloads, reload, add/remove/change quantities and save/unsave products. Verify Nigeria's
+owned Storage image on cart and wishlist. Check unavailable products/sizes and failed
+reads only in a disposable mocked setup; do not edit live catalogue rows for testing.

@@ -54,7 +54,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
           <p className="mt-3 text-sm font-medium">{product.inStock ? "In stock" : "Out of stock"}</p>
           <p className="mt-5 text-base leading-7 text-neutral-600">{product.description}</p>
-          <ProductActions key={product.id} productId={product.id} sizes={product.sizes} inStock={product.inStock} />
+          <ProductActions key={product.id} product={product} />
           <WishlistButton productId={product.id} productName={product.name} showLabel className="mt-4" />
         </section>
       </div>

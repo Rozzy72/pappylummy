@@ -2,17 +2,17 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { normalizeProductId, resolveProduct } from "@/lib/products/identity";
-import { MAX_CART_QUANTITY, PRODUCT_ID_PERSISTENCE_VERSION, reconcileCart, validQuantity } from "./reconcile-persisted-items";
+import { normalizeProductId } from "@/lib/products/identity";
+import { MAX_CART_QUANTITY, PRODUCT_ID_PERSISTENCE_VERSION, readPersistedSelections, reconcileCart, migrateCart, validQuantity } from "./reconcile-persisted-items";
 import type { CartItem } from "@/types/cart";
-import type { JerseySize } from "@/types/product";
+import type { JerseySize, Product } from "@/types/product";
 
 export { MAX_CART_QUANTITY } from "./reconcile-persisted-items";
 
 type CartState = {
   items: CartItem[];
   hydrated: boolean;
-  addItem: (productId: string, selectedSize: JerseySize, quantity: number) => boolean;
+  addItem: (product: Product, selectedSize: JerseySize, quantity: number) => boolean;
   removeItem: (productId: string, selectedSize: JerseySize) => void;
   updateQuantity: (productId: string, selectedSize: JerseySize, quantity: number) => void;
   clearCart: () => void;
@@ -21,7 +21,7 @@ type CartState = {
 // Storage can be unavailable (privacy settings/quota); retain a usable memory cart.
 const safeStorage: StateStorage = {
   getItem: (name) => {
-    try { return window.localStorage.getItem(name); } catch { return null; }
+    try { return readPersistedSelections(window.localStorage.getItem(name)); } catch { return null; }
   },
   setItem: (name, value) => {
     try { window.localStorage.setItem(name, value); } catch { /* Memory cart remains usable. */ }
@@ -36,10 +36,11 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       hydrated: false,
-      addItem: (productId, selectedSize, quantity) => {
+      // Current adapted product is transient UI data, never checkout authority.
+      addItem: (product, selectedSize, quantity) => {
         if (!get().hydrated || !validQuantity(quantity)) return false;
-        const product = resolveProduct(productId);
-        if (!product?.inStock || !product.sizes.includes(selectedSize)) return false;
+        const productId = normalizeProductId(product.id);
+        if (!productId || !product.inStock || !product.sizes.includes(selectedSize)) return false;
         const existing = get().items.find((item) => item.productId === normalizeProductId(productId) && item.selectedSize === selectedSize);
         if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) return false;
         set((state) => ({
@@ -47,8 +48,7 @@ export const useCartStore = create<CartState>()(
             ? state.items.map((item) => item.productId === normalizeProductId(productId) && item.selectedSize === selectedSize
               ? { ...item, quantity: item.quantity + quantity } : item)
             : [...state.items, {
-              productId: product.id, slug: product.slug, name: product.name,
-              image: product.image, price: product.price, selectedSize, quantity,
+              productId, selectedSize, quantity,
             }],
         }));
         return true;
@@ -66,10 +66,10 @@ export const useCartStore = create<CartState>()(
     {
       name: "naija-kits-cart",
       version: PRODUCT_ID_PERSISTENCE_VERSION,
-      migrate: (saved: unknown) => ({ items: reconcileCart(saved) }),
+      migrate: migrateCart,
       storage: createJSONStorage(() => safeStorage),
       skipHydration: true,
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: reconcileCart({ items: state.items }) }),
       merge: (saved: unknown, current) => ({ ...current, items: reconcileCart(saved) }),
     },
   ),
@@ -87,8 +87,3 @@ export function hydrateCart(): Promise<void> {
 
 export const selectTotalItems = (state: Pick<CartState, "items">): number =>
   state.items.reduce((total, item) => total + item.quantity, 0);
-
-// Display only. Checkout/payment totals must later be recalculated on the server
-// from trusted product prices and inventory, never from localStorage or this subtotal.
-export const selectSubtotal = (state: Pick<CartState, "items">): number =>
-  state.items.reduce((total, item) => total + item.price * item.quantity, 0);

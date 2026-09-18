@@ -1,21 +1,22 @@
-﻿import Image from "next/image";
+﻿import { ProductImage } from "@/components/product/product-image";
 import type { Product } from "@/types/product";
-import { getProductImage, productPlaceholder } from "@/utils/product-image";
+import { getProductGallery, productPlaceholder } from "@/utils/product-image";
 
 type ProductGalleryProps = {
-  product: Pick<Product, "name" | "image" | "images">;
+  product: Pick<Product, "id" | "name" | "image" | "images">;
 };
 
 export function ProductGallery({ product }: ProductGalleryProps) {
-  const images = [...new Set([product.image, ...product.images].map(getProductImage))];
+  const images = getProductGallery(product.image, product.images, product.id);
 
   return (
     <section aria-label={`Images of ${product.name}`} className="space-y-4">
       {images.map((src, index) => (
         <figure key={src} className="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
           <div className="relative aspect-[4/5]">
-            <Image
-              src={src}
+            <ProductImage
+              reference={src}
+              productId={product.id}
               alt={src === productPlaceholder
                 ? `Placeholder for ${product.name}; product photography coming soon`
                 : `${product.name}, view ${index + 1}`}

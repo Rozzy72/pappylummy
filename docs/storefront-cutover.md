@@ -1,5 +1,10 @@
 # Controlled Supabase read cutover (Task 12E)
 
+> Historical Task 12E record. Task 12F has removed the transitional dependencies
+> described below. Cart and wishlist now use server-fetched validated snapshots,
+> persistence is version 3, and historical products live only in tests/fixtures/products.ts.
+> See cart-wishlist-migration.md for current behavior and validation instructions.
+
 ## Read graph and remaining static consumers
 
 Before: NewArrivals and Shop imported the static products array; the detail route

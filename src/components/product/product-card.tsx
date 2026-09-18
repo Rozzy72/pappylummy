@@ -1,8 +1,7 @@
-﻿import Image from "next/image";
+﻿import { ProductImage } from "@/components/product/product-image";
 import Link from "next/link";
 import type { Product } from "@/types/product";
 import { formatCurrency } from "@/utils/format-currency";
-import { getProductImage, productPlaceholder } from "@/utils/product-image";
 import { WishlistButton } from "@/components/product/wishlist-button";
 
 type ProductCardProps = {
@@ -14,8 +13,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const productUrl = `/product/${encodeURIComponent(product.slug)}`;
   const isOnSale =
     product.originalPrice !== undefined && product.originalPrice > product.price;
-  const imageSrc = getProductImage(product.image);
-  const isPlaceholder = imageSrc === productPlaceholder;
 
   return (
     <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white">
@@ -25,9 +22,10 @@ export function ProductCard({ product }: ProductCardProps) {
           aria-label={`View ${product.name}`}
           className="relative block aspect-[4/5] focus-visible:outline-2 focus-visible:-outline-offset-2"
         >
-          <Image
-            src={imageSrc}
-            alt={isPlaceholder ? "Jersey placeholder; product photography coming soon" : product.name}
+          <ProductImage
+            reference={product.image}
+            productId={product.id}
+            alt={product.name}
             fill
             sizes="(min-width: 1280px) 288px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             className="object-contain p-3 sm:p-5"

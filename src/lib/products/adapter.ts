@@ -1,3 +1,4 @@
+import { getProductGallery } from "@/utils/product-image";
 import type { ProductRow } from "@/types/database";
 import type { JerseySize, Product, ProductCategory } from "@/types/product";
 
@@ -28,14 +29,6 @@ export function koboToNaira(value: unknown): number {
   return value / 100;
 }
 
-function localImage(value: unknown): string {
-  // Flat public/products assets only: no remote URLs, traversal, encoding or query strings.
-  if (typeof value !== "string" || !/^\/products\/[a-zA-Z0-9_-]+\.(svg|png|jpg|jpeg|webp|avif)$/.test(value)) {
-    throw new Error("Invalid product image: expected a local product asset path.");
-  }
-  return value;
-}
-
 export function productRowToProduct(row: ProductRow): Product {
   if (!isProductSlug(row.slug)) throw new Error("Invalid product slug.");
   if (!isCategory(row.category)) throw new Error("Invalid product category.");
@@ -44,7 +37,6 @@ export function productRowToProduct(row: ProductRow): Product {
     if (!isSize(size)) throw new Error("Invalid product size.");
     return size;
   });
-  if (!Array.isArray(row.images)) throw new Error("Invalid product images.");
   if (row.currency !== "NGN") throw new Error("Invalid product currency.");
   const price = koboToNaira(row.price_kobo);
   const originalPrice = row.original_price_kobo === null
@@ -52,11 +44,11 @@ export function productRowToProduct(row: ProductRow): Product {
   if (row.original_price_kobo !== null && row.original_price_kobo <= row.price_kobo) {
     throw new Error("Invalid product original price: must exceed current price.");
   }
+  const [image, ...images] = getProductGallery(row.image_path, row.images, row.id);
   return {
     id: row.id, name: row.name, slug: row.slug, description: row.description,
     price, originalPrice,
-    image: localImage(row.image_path === null ? "/products/placeholder.svg" : row.image_path),
-    images: row.images.map(localImage),
+    image, images,
     club: row.club ?? undefined, league: row.league ?? undefined, country: row.country ?? undefined,
     category: row.category, season: row.season, sizes: validatedSizes,
     isNew: row.is_new, isFeatured: row.is_featured,

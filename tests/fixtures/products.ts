@@ -1,4 +1,4 @@
-import type { Product } from "@/types/product";
+import type { Product } from "../../src/types/product";
 
 // Fictional sample catalogue. Prices are NGN; imagery is an original local placeholder.
 export const products: Product[] = [

@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { normalizeProductId } from "@/lib/products/identity";
-import { PRODUCT_ID_PERSISTENCE_VERSION, reconcileWishlist } from "./reconcile-persisted-items";
+import { PRODUCT_ID_PERSISTENCE_VERSION, readPersistedSelections, reconcileWishlist, migrateWishlist } from "./reconcile-persisted-items";
 
 type WishlistState = {
   items: string[];
@@ -19,7 +19,7 @@ type WishlistState = {
 // A blocked or full storage area should leave the in-memory wishlist usable.
 const storage: StateStorage = {
   getItem: (name) => {
-    try { return window.localStorage.getItem(name); } catch { return null; }
+    try { return readPersistedSelections(window.localStorage.getItem(name)); } catch { return null; }
   },
   setItem: (name, value) => {
     try { window.localStorage.setItem(name, value); } catch { /* Keep memory state. */ }
@@ -59,11 +59,11 @@ export const useWishlistStore = create<WishlistState>()(
     {
       name: "naija-kits-wishlist",
       version: PRODUCT_ID_PERSISTENCE_VERSION,
-      migrate: (saved: unknown) => ({ items: reconcileWishlist(saved) }),
+      migrate: migrateWishlist,
       storage: createJSONStorage(() => storage),
       skipHydration: true,
       // Persist IDs only: names, prices, images and URLs remain catalogue data.
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: reconcileWishlist({ items: state.items }) }),
       merge: (saved: unknown, current) => ({ ...current, items: reconcileWishlist(saved) }),
     },
   ),

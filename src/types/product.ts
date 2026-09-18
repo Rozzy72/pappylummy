@@ -19,9 +19,9 @@ export interface Product {
   price: number;
   /** Previous price in Nigerian Naira (NGN), when discounted. */
   originalPrice?: number;
-  /** Primary image URL or public asset path. */
+  /** Validated owned Storage reference or exact local placeholder. */
   image: string;
-  /** Additional image URLs or public asset paths. */
+  /** Validated additional image references, ordered and deduplicated. */
   images: string[];
   /** Optional for national team jerseys. */
   club?: string;

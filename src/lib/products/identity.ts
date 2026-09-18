@@ -1,6 +1,3 @@
-import { products } from "@/data/products";
-import type { Product } from "@/types/product";
-
 // Fixed mapping reviewed with the seed. UUID syntax alone never establishes trust.
 const legacyToUuid = new Map<string, string>([
   ["jersey-001", "423bb850-23f3-493f-a3c1-5b03c2096f93"],
@@ -16,20 +13,12 @@ const legacyToUuid = new Map<string, string>([
   ["jersey-011", "e006008a-f14a-4cc3-ac28-8fd0c7afe687"],
   ["jersey-012", "c3a2afe2-cc30-4839-b081-70bdac68bfdf"],
 ]);
-const canonicalProducts = new Map<string, Product>();
-for (const product of products) {
-  const id = legacyToUuid.get(product.id);
-  if (id) canonicalProducts.set(id, { ...product, id });
-}
 
-/** Both static IDs and known UUIDs resolve to a catalogue-backed canonical ID. */
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/** Identity candidates only; current catalogue membership is checked separately. */
 export function normalizeProductId(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const id = legacyToUuid.get(value) ?? value;
-  return canonicalProducts.has(id) ? id : undefined;
-}
-
-export function resolveProduct(value: unknown): Product | undefined {
-  const id = normalizeProductId(value);
-  return id ? canonicalProducts.get(id) : undefined;
+  return uuid.test(id) ? id : undefined;
 }

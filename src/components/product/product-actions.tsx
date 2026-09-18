@@ -5,12 +5,13 @@ import type { JerseySize, Product } from "@/types/product";
 import { MAX_CART_QUANTITY, useCartStore } from "@/store/cart-store";
 import { useCartHydration } from "@/components/cart/use-cart-hydration";
 
-type ProductActionsProps = Pick<Product, "sizes" | "inStock"> & { productId: Product["id"] };
+type ProductActionsProps = { product: Product };
 
 // Presentation limits only; future orders require server-side inventory checks.
 const maxQuantity = MAX_CART_QUANTITY;
 
-export function ProductActions({ productId, sizes, inStock }: ProductActionsProps) {
+export function ProductActions({ product }: ProductActionsProps) {
+  const { sizes, inStock } = product;
   const [selectedSize, setSelectedSize] = useState<JerseySize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [feedback, setFeedback] = useState("");
@@ -55,7 +56,7 @@ export function ProductActions({ productId, sizes, inStock }: ProductActionsProp
         aria-describedby={messageId}
         onClick={() => {
           if (!selectedSize) return;
-          const added = addItem(productId, selectedSize, quantity);
+          const added = addItem(product, selectedSize, quantity);
           setFeedback(added ? `Added to cart: size ${selectedSize}, quantity ${quantity}.` : `Could not add this quantity. The cart limit is ${maxQuantity} per product and size.`);
         }}
         className="mt-6 min-h-12 w-full rounded-md bg-neutral-950 px-6 py-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-4 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-600"
