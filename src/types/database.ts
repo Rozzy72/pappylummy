@@ -1,5 +1,5 @@
 /** Manually maintained products contract from 001_initial_schema.sql.
- * Other tables are intentionally outside this application contract for now.
+ * Profiles are also described below; other tables remain outside this contract.
  * SQL CHECK constraints remain strings here; validate them at the adapter boundary.
  * Insert/Update describe row shapes, not permission to write through the API.
  */
@@ -34,6 +34,12 @@ type ProductInsert = Pick<ProductDatabaseRow, "name" | "slug" | "price_kobo" | "
 export type Database = {
   public: {
     Tables: {
+      profiles: {
+        Row: { id: string; full_name: string | null; phone: string | null; created_at: string; updated_at: string };
+        Insert: { id: string; full_name?: string | null; phone?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; full_name?: string | null; phone?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
       products: {
         Row: ProductDatabaseRow;
         Insert: ProductInsert;
