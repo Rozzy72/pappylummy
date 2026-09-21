@@ -12,7 +12,7 @@ export async function updateSession(request: NextRequest) {
 
   // Also prevent shared caching when a session is present but needs no refresh.
   // Conservatively apply this to any cookie-bearing request; no token parsing.
-  if (request.cookies.getAll().length > 0 || request.nextUrl.pathname === "/login" ||
+  if (request.cookies.getAll().length > 0 || ["/login", "/forgot-password", "/reset-password", "/reset-password/complete"].includes(request.nextUrl.pathname) ||
       request.nextUrl.pathname.startsWith("/auth/")) {
     cacheHeaders.set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
     cacheHeaders.set("Pragma", "no-cache");
