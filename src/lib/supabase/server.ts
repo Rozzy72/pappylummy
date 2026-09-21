@@ -8,9 +8,11 @@ import type { Database } from "@/types/database";
 type ServerClientOptions = {
   /** Enable only in Server Actions or Route Handlers where cookies can be written. */
   writableCookies?: boolean;
+  /** Route Handlers must return these SSR cache headers with their response. */
+  responseHeaders?: Headers;
 };
 
-export async function createClient({ writableCookies = false }: ServerClientOptions = {}) {
+export async function createClient({ writableCookies = false, responseHeaders }: ServerClientOptions = {}) {
   const { url, publishableKey } = getSupabasePublicConfig();
   const cookieStore = await cookies();
 
@@ -20,10 +22,11 @@ export async function createClient({ writableCookies = false }: ServerClientOpti
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
-        // Server Components cannot write response cookies. Auth integration must
-        // add a session-refresh Proxy before relying on authenticated RSC reads.
+      setAll(cookiesToSet, headers) {
+        // Server Components remain read-only; Proxy handles session refresh.
+        // Server Actions use the auth-route no-store policy in Proxy.
         if (!writableCookies) return;
+        Object.entries(headers).forEach(([name, value]) => responseHeaders?.set(name, value));
         cookiesToSet.forEach(({ name, value, options }) => {
           cookieStore.set(name, value, options);
         });
