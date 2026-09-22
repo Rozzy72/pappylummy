@@ -1,13 +1,14 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 type MobileMenuProps = {
+  children?: ReactNode;
   links: readonly { href: string; label: string }[];
 };
 
-export function MobileMenu({ links }: MobileMenuProps) {
+export function MobileMenu({ links, children }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
 
@@ -73,6 +74,7 @@ export function MobileMenu({ links }: MobileMenuProps) {
             </li>
           ))}
         </ul>
+        {children && <div className="mx-auto max-w-7xl px-3">{children}</div>}
       </nav>
     </div>
   );

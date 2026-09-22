@@ -1,4 +1,6 @@
 ﻿import Link from "next/link";
+import { isHeaderAuthenticated } from "@/lib/auth/header-auth";
+import { SignOutForm } from "@/components/auth/sign-out-form";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { CartLink } from "@/components/cart/cart-link";
 import { WishlistLink } from "@/components/wishlist/wishlist-link";
@@ -10,15 +12,14 @@ const navigation = [
   { href: "/categories", label: "Categories" },
 ] as const;
 
-const accountLinks = [
-  { href: "/wishlist", label: "Wishlist" },
-  { href: "/account", label: "Account" },
-] as const;
-
 const linkStyle =
   "min-h-11 items-center rounded-md px-2 text-sm font-medium text-neutral-600 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2";
 
-export function Header() {
+export async function Header() {
+  const authenticated = await isHeaderAuthenticated();
+  const accountLink = authenticated
+    ? { href: "/account", label: "Account" }
+    : { href: "/login", label: "Sign in" };
   return (
     <header className="relative z-10 border-b border-neutral-200 bg-white">
       <div className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
@@ -55,10 +56,13 @@ export function Header() {
           </button>
           <WishlistLink className={`${linkStyle} hidden lg:inline-flex`} />
           <CartLink className={`inline-flex ${linkStyle}`} />
-          <Link href="/account" className={`${linkStyle} hidden lg:inline-flex`}>
-            Account
+          <Link href={accountLink.href} className={`${linkStyle} hidden lg:inline-flex`}>
+            {accountLink.label}
           </Link>
-          <MobileMenu links={[...navigation, ...accountLinks]} />
+          {authenticated && <div className="hidden lg:block"><SignOutForm /></div>}
+          <MobileMenu links={[...navigation, { href: "/wishlist", label: "Wishlist" }, accountLink]}>
+            {authenticated && <SignOutForm />}
+          </MobileMenu>
         </div>
       </div>
     </header>
