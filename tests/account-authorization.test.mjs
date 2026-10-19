@@ -1,3 +1,4 @@
+import { loadUi } from './ui-loader.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -8,7 +9,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 function load(file, mocks) {
   const m = new Module(file);
-  m.require = name => Object.hasOwn(mocks, name) ? mocks[name] : require(name);
+  m.require = name => name === '@sd/ui' ? loadUi() : Object.hasOwn(mocks, name) ? mocks[name] : require(name);
   m._compile(ts.transpileModule(read(file), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, file);
   return m.exports;
 }

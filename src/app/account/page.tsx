@@ -1,3 +1,4 @@
+import { Stack, Box, Text, Heading } from "@sd/ui";
 import { requireUser } from "@/lib/auth/require-user";
 
 // Private rendering and fetches must never enter shared route/data caches.
@@ -7,7 +8,8 @@ export default async function AccountPage() {
   const { client, userId } = await requireUser();
   let profile: { full_name: string | null; phone: string | null } | null = null;
   try {
-    const { data, error } = await client.from("profiles")
+    const { data, error } = await client
+      .from("profiles")
       .select("full_name, phone")
       .eq("id", userId)
       .maybeSingle();
@@ -16,22 +18,32 @@ export default async function AccountPage() {
     // Missing profiles and query failures share a non-diagnostic state.
   }
   return (
-    <section className="mx-auto max-w-2xl" aria-labelledby="account-heading">
-      <h1 id="account-heading" className="text-3xl font-semibold tracking-tight">Your account</h1>
-      {profile ? (
-        <dl className="mt-6 space-y-5 rounded-xl border border-neutral-200 p-6">
-          <div>
-            <dt className="text-sm font-medium text-neutral-600">Full name</dt>
-            <dd className="mt-1 break-words">{profile.full_name || "Not provided"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-neutral-600">Phone</dt>
-            <dd className="mt-1 break-words">{profile.phone || "Not provided"}</dd>
-          </div>
-        </dl>
-      ) : (
-        <p role="status" className="mt-6 text-neutral-600">Your account information is currently unavailable. Please try again later.</p>
-      )}
-    </section>
+    <Box as="section" width="narrow" aria-labelledby="account-heading">
+      <Stack gap="6">
+        <Text look="eyebrow" muted>
+          Your personal line-up
+        </Text>
+        <Heading as="h1" id="account-heading">
+          Your account.
+        </Heading>
+        {profile ? (
+          <Stack p="6" border surface="paper">
+            <Text look="small" muted>
+              Full name
+            </Text>
+            <Text>{profile.full_name || "Not provided"}</Text>
+            <Text look="small" muted>
+              Phone
+            </Text>
+            <Text>{profile.phone || "Not provided"}</Text>
+          </Stack>
+        ) : (
+          <Text role="status" muted>
+            Your account information is currently unavailable. Please try again
+            later.
+          </Text>
+        )}
+      </Stack>
+    </Box>
   );
 }

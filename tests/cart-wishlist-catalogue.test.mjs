@@ -30,6 +30,7 @@ function load(path){
    if(mocks[specifier]||(specifier.startsWith("@/components/") && specifier !== "@/components/cart/cart-line")||specifier==='next/link'){
      dependency=join(temp,"mock-"+Buffer.from(specifier).toString("hex")+".cjs");
      writeFileSync(dependency,mocks[specifier]??'module.exports=new Proxy({}, {get:(_,name)=>name});');
+   }else if(specifier === "@sd/ui"){ dependency=load("packages/ui/src/index.tsx");
    }else if(specifier.startsWith("@/")||specifier.startsWith(".")){
      const base=specifier.startsWith("@/")?resolve(root,"src",specifier.slice(2)):resolve(dirname(absolute),specifier);
      dependency=load(base+(existsSync(base+".ts")?".ts":".tsx"));
@@ -126,3 +127,11 @@ test('production has no static catalogue imports or metadata identity map',()=>{
  const identity=readFileSync(join(root,'src/lib/products/identity.ts'),'utf8');
  assert(!/resolveProduct|canonicalProducts|\bimport\b/.test(identity));
 });
+
+test("printing adds 5000 per personalized jersey and excludes unavailable lines",()=>{const p={price:32000};const item={quantity:2,personalization:{name:"AYO",number:"10"}};assert.equal(availableSubtotal([{item,product:p,status:"available"}]),74000);assert.equal(availableSubtotal([{item:{quantity:1},product:p,status:"available"},{item,product:p,status:"available"}]),106000);assert.equal(availableSubtotal([{item,product:p,status:"out-of-stock"}]),0);assert.equal(availableSubtotal([{item,product:p,status:"unverified"}]),0);});
+
+const {deliveryFee}=require(load('src/lib/delivery.ts'));
+test("delivery uses approved flat rates and rejects unknown destinations",()=>{assert.equal(deliveryFee('osun'),2000);assert.equal(deliveryFee('other-nigeria'),5000);for(const zone of ['', 'international', 'lagos', '__proto__'])assert.equal(deliveryFee(zone),null);const subtotal=availableSubtotal([{item:{quantity:2,personalization:{name:'AYO',number:'10'}},product:{price:32000},status:'available'}]);assert.equal(subtotal+deliveryFee('osun'),76000);assert.equal(subtotal+deliveryFee('other-nigeria'),79000);});
+
+const {stateDeliveryFee,NIGERIAN_STATES}=require(load('src/lib/delivery.ts'));
+test("state-based delivery accepts 36 states and FCT and rejects unknown input",()=>{assert.equal(new Set(NIGERIAN_STATES).size,37);assert.equal(stateDeliveryFee('Osun'),2000);for(const state of NIGERIAN_STATES.filter(s=>s!=='Osun'))assert.equal(stateDeliveryFee(state),5000);assert.equal(stateDeliveryFee(''),null);assert.equal(stateDeliveryFee('London'),null);});

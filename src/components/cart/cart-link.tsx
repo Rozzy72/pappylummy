@@ -1,15 +1,21 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
+import { NavLink, StoreIconLink } from "@sd/ui";
 import { selectTotalItems, useCartStore } from "@/store/cart-store";
 import { useCartHydration } from "@/components/cart/use-cart-hydration";
 
-export function CartLink({ className }: { className?: string }) {
+export function CartLink({icon=false}:{icon?:boolean}={}) {
   const hydrated = useCartHydration();
   const count = useCartStore(selectTotalItems);
+  if(icon)return <StoreIconLink href="/cart" icon="bag" label={hydrated?`Cart, ${count} ${count===1?"item":"items"}`:"Cart"} count={hydrated?count:undefined}/>;
   return (
-    <Link href="/cart" className={className} aria-label={hydrated ? `Cart, ${count} ${count === 1 ? "item" : "items"}` : "Cart"}>
+    <NavLink
+      href="/cart"
+      aria-label={
+        hydrated ? `Cart, ${count} ${count === 1 ? "item" : "items"}` : "Cart"
+      }
+    >
       Cart{hydrated ? ` (${count})` : ""}
-    </Link>
+    </NavLink>
   );
 }

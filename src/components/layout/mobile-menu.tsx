@@ -1,81 +1,56 @@
-﻿"use client";
-
-import Link from "next/link";
+"use client";
 import { useRef, useState, type ReactNode } from "react";
-
-type MobileMenuProps = {
-  children?: ReactNode;
+import { Box, Stack, Button, MobilePanel, NavLink, Icon } from "@sd/ui";
+export function MobileMenu({
+  links,
+  children,
+}: {
   links: readonly { href: string; label: string }[];
-};
-
-export function MobileMenu({ links, children }: MobileMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-
-  function closeMenu() {
-    setIsOpen(false);
-    toggleRef.current?.focus();
+  children?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+  function close() {
+    setOpen(false);
+    ref.current?.focus();
   }
-
   return (
-    <div
-      className="lg:hidden"
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && isOpen) {
-          event.preventDefault();
-          closeMenu();
+    <Box
+      visibility="mobile"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          e.preventDefault();
+          close();
         }
       }}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setIsOpen(false);
-        }
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
       }}
     >
-      <button
-        ref={toggleRef}
-        type="button"
-        aria-expanded={isOpen}
+      <Button
+        ref={ref}
+        variant="ghost"
+        aria-expanded={open}
         aria-controls="mobile-navigation"
-        aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex size-11 items-center justify-center rounded-md hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2"
+        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+        onClick={() => setOpen(!open)}
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          className="size-6"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            d={isOpen ? "M6 6l12 12M6 18 18 6" : "M4 6h16M4 12h16M4 18h16"}
-          />
-        </svg>
-      </button>
-      <nav
+        <Icon name={open ? "close" : "menu"} />
+      </Button>
+      <MobilePanel
         id="mobile-navigation"
         aria-label="Mobile navigation"
-        hidden={!isOpen}
-        className="absolute inset-x-0 top-full z-20 max-h-[70dvh] overflow-y-auto border-b border-neutral-200 bg-white px-4 py-4 shadow-sm sm:px-6"
+        hidden={!open}
       >
-        <ul className="mx-auto max-w-7xl space-y-1">
-          {links.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                onClick={closeMenu}
-                className="block rounded-md px-3 py-3 text-sm font-medium hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                {link.label}
-              </Link>
-            </li>
+        <Stack>
+          {links.map((l) => (
+            <NavLink key={l.href} href={l.href} onClick={close}>
+              {l.label}
+            </NavLink>
           ))}
-        </ul>
-        {children && <div className="mx-auto max-w-7xl px-3">{children}</div>}
-      </nav>
-    </div>
+          {children}
+        </Stack>
+      </MobilePanel>
+    </Box>
   );
 }

@@ -1,0 +1,13 @@
+# Keep local credentials and development-only files out of deployments.
+.env*
+.git
+.next
+node_modules
+work
+local-checkout-runner
+temp-product-images
+tests
+docs
+*.tsbuildinfo
+AGENTS.md
+CLAUDE.md

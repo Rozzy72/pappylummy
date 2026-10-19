@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
+import { Stack, Box, Flex, Text, Heading, Button, LinkButton } from "@sd/ui";
 import { ProductGrid } from "@/components/product/product-grid";
 import { selectWishlist } from "@/lib/products/selection";
 import type { Product } from "@/types/product";
@@ -15,31 +15,65 @@ export function WishlistContents({ products }: { products: Product[] | null }) {
   const removeItem = useWishlistStore((state) => state.removeItem);
   const selected = selectWishlist(items, products ?? []);
 
-  if (!hydrated) return <p role="status" className="py-12 text-neutral-600">Loading your wishlist…</p>;
-
-  if (items.length === 0) return (
-    <div className="py-16 text-center">
-      {products === null && <CatalogueRetry />}
-      <h2 className="text-2xl font-semibold">Your wishlist is empty.</h2>
-      <p className="mt-3 text-neutral-600">Save your favourite jerseys to find them here.</p>
-      <Link href="/shop" className="mt-6 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-6 py-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4">Explore the shop</Link>
-    </div>
-  );
-
+  if (!hydrated)
+    return (
+      <Text role="status" muted>
+        Loading your wishlist…
+      </Text>
+    );
+  if (items.length === 0)
+    return (
+      <Box width="narrow" surface="paper" p="9" border>
+        <Stack gap="5">
+          {products === null && <CatalogueRetry />}
+          <Text look="eyebrow" muted>
+            Keep your favourites close
+          </Text>
+          <Heading>Your wishlist is empty.</Heading>
+          <Text muted>Tap the heart on a jersey to save it for later.</Text>
+          <LinkButton href="/shop">Explore the collection →</LinkButton>
+        </Stack>
+      </Box>
+    );
   return (
-    <section aria-labelledby="saved-products-heading" className="mt-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 id="saved-products-heading" className="text-xl font-semibold">Saved Jerseys</h2>
-        <button type="button" onClick={clearWishlist} className="min-h-11 rounded-sm px-2 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Clear wishlist</button>
-      </div>
-      <p role="status" className="mb-4 text-sm text-neutral-600">{items.length} saved {items.length === 1 ? "jersey" : "jerseys"}. Use the heart button to remove a jersey.</p>
-      {products === null ? <CatalogueRetry /> : selected.products.length > 0 && <ProductGrid products={selected.products} />}
-      {selected.unavailableIds.length > 0 && <ul aria-label="Unavailable saved selections" className="mt-6 space-y-4">
-        {selected.unavailableIds.map((id) => <li key={id} className="flex flex-wrap items-center justify-between gap-3 border-t py-4">
-          <span>{products === null ? "Product details unavailable" : "This saved product is no longer available."}</span>
-          <button type="button" onClick={() => removeItem(id)} className="min-h-11 rounded-sm px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2">Remove<span className="sr-only"> unavailable saved selection</span></button>
-        </li>)}
-      </ul>}
-    </section>
+    <Stack as="section" aria-labelledby="saved-products-heading" gap="6">
+      <Flex justify="between" wrap>
+        <Heading id="saved-products-heading">Saved jerseys.</Heading>
+        <Button variant="link" onClick={clearWishlist}>
+          Clear wishlist
+        </Button>
+      </Flex>
+      <Text role="status" muted>
+        {items.length} saved {items.length === 1 ? "jersey" : "jerseys"}. Use
+        the heart button to remove a jersey.
+      </Text>
+      {products === null ? (
+        <CatalogueRetry />
+      ) : (
+        selected.products.length > 0 && (
+          <ProductGrid products={selected.products} />
+        )
+      )}
+      <Stack as="ul" aria-label="Unavailable saved selections">
+        {selected.unavailableIds.map((id) => (
+          <Box as="li" key={id} p="4" border>
+            <Flex justify="between" wrap>
+              <Text>
+                {products === null
+                  ? "Product details unavailable"
+                  : "This saved product is no longer available."}
+              </Text>
+              <Button
+                variant="link"
+                onClick={() => removeItem(id)}
+                aria-label="Remove unavailable saved selection"
+              >
+                Remove
+              </Button>
+            </Flex>
+          </Box>
+        ))}
+      </Stack>
+    </Stack>
   );
 }

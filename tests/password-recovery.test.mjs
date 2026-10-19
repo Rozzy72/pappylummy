@@ -1,3 +1,4 @@
+import { loadUi } from './ui-loader.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import ts from 'typescript';
 const require = createRequire(import.meta.url);
 const read = file => readFileSync(new URL('../'+file, import.meta.url),'utf8');
 function load(file, mocks={}) {
-  const m=new Module(file);m.require=name=>Object.hasOwn(mocks,name)?mocks[name]:require(name);
+  const m=new Module(file);m.require=name=>name==='@sd/ui'?loadUi():Object.hasOwn(mocks,name)?mocks[name]:require(name);
   m._compile(ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,file);return m.exports;
 }
 const validation=load('src/lib/auth/validation.ts');
@@ -172,12 +173,13 @@ test('request success has an atomic polite status banner with exact generic word
   assert.equal(feedback.props.children,'If an account exists for that email, password reset instructions have been sent.');
   assert.equal(feedback.props['aria-live'],'polite');
   assert.equal(feedback.props['aria-atomic'],'true');
-  assert.match(feedback.props.className,/border-l-4/);
-  assert.match(feedback.props.className,/bg-neutral-100/);
-  assert.match(feedback.props.className,/p-4/);
+  const rendered=feedback.type(feedback.props);
+  assert.match(rendered.props.className,/border-l-4/);
+  assert.match(rendered.props.className,/bg-material/);
+  assert.match(rendered.props.className,/p-s4/);
   assert.equal(recoveryFeedback(idle).props.children,'');
-  assert.equal(recoveryFeedback(idle).props.className,undefined);
-  assert.equal(recoveryFeedback({status:'error',message:'Generic error'}).props.className,undefined);
+  assert.equal(recoveryFeedback(idle).props.emphasized,false);
+  assert.equal(recoveryFeedback({status:'error',message:'Generic error'}).props.emphasized,false);
 });
 
 test('success feedback is identical for missing accounts and failures and excludes private data',async()=>{

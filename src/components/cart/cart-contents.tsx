@@ -1,6 +1,16 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
+import { cartLineKey, PERSONALIZATION_PRICE } from "@/lib/personalization";
+import {
+  Stack,
+  Box,
+  CartLayout,
+  Flex,
+  Text,
+  Heading,
+  LinkButton,
+  Button,
+} from "@sd/ui";
 import { CartLine } from "@/components/cart/cart-line";
 import { useCartHydration } from "@/components/cart/use-cart-hydration";
 import { selectTotalItems, useCartStore } from "@/store/cart-store";
@@ -15,36 +25,107 @@ export function CartContents({ products }: { products: Product[] | null }) {
   const items = useCartStore((state) => state.items);
   const totalItems = useCartStore(selectTotalItems);
   const lines = selectCart(items, products);
+  const printingSubtotal = lines.reduce(
+    (sum, line) =>
+      sum +
+      (line.status === "available" && line.item.personalization
+        ? PERSONALIZATION_PRICE * line.item.quantity
+        : 0),
+    0,
+  );
   const subtotal = availableSubtotal(lines);
   const allAvailable = lines.every((line) => line.status === "available");
   const clearCart = useCartStore((state) => state.clearCart);
 
-  if (!hydrated) return <p role="status" className="py-12 text-neutral-600">Loading your cart…</p>;
-
-  if (items.length === 0) return (
-    <div className="py-16 text-center">
-      {products === null && <CatalogueRetry />}
-      <h2 className="text-2xl font-semibold">Your cart is empty.</h2>
-      <p className="mt-3 text-neutral-600">Find a jersey for your next match day.</p>
-      <Link href="/shop" className="mt-6 inline-flex min-h-11 items-center rounded-md bg-neutral-950 px-6 py-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4">Continue Shopping</Link>
-    </div>
-  );
-
+  if (!hydrated)
+    return (
+      <Text role="status" muted>
+        Loading your cart…
+      </Text>
+    );
+  if (items.length === 0)
+    return (
+      <Box width="narrow" surface="paper" p="9" border>
+        <Stack gap="5">
+          {products === null && <CatalogueRetry />}
+          <Text look="eyebrow" muted>
+            Your next match day starts here
+          </Text>
+          <Heading>Your cart is empty.</Heading>
+          <Text muted>
+            Find a jersey that feels like you. Your selections will be saved on
+            this browser.
+          </Text>
+          <LinkButton href="/shop">Find your colours →</LinkButton>
+        </Stack>
+      </Box>
+    );
   return (
-    <div className="mt-6 grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div>
+    <CartLayout>
+      <Stack>
         {products === null && <CatalogueRetry />}
-        <ul aria-label="Cart items">{lines.map((line) => <CartLine key={`${line.item.productId}:${line.item.selectedSize}`} line={line} />)}</ul>
-        <button type="button" onClick={clearCart} className="mt-4 min-h-11 rounded-sm text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Clear cart</button>
-      </div>
-      {products !== null && <section aria-labelledby="summary-heading" className="rounded-xl border border-neutral-200 bg-neutral-50 p-6">
-        <h2 id="summary-heading" className="text-lg font-semibold">Cart summary</h2>
-        <p role="status" className="mt-4 text-sm text-neutral-600">{totalItems} {totalItems === 1 ? "item" : "items"}</p>
-        <dl className="mt-4 flex justify-between gap-4 font-semibold"><dt>{allAvailable ? "Subtotal" : "Available items subtotal"}</dt><dd>{formatCurrency(subtotal)}</dd></dl>
-        <p className="mt-3 text-sm leading-6 text-neutral-600">Delivery charges are not included. Checkout is coming soon.</p>
-        {allAvailable ? <Link href="/checkout" className="mt-6 flex min-h-12 items-center justify-center rounded-md bg-neutral-950 px-4 py-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-4">Proceed to Checkout</Link> : <p role="status" className="mt-6 text-sm">Resolve unavailable selections before proceeding. They are excluded from this subtotal.</p>}
-        <Link href="/shop" className="mt-3 flex min-h-11 items-center justify-center rounded-md border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4">Continue Shopping</Link>
-      </section>}
-    </div>
+        <ul aria-label="Cart items">
+          {lines.map((line) => (
+            <CartLine key={cartLineKey(line.item)} line={line} />
+          ))}
+        </ul>
+        <Flex>
+          <Button variant="link" onClick={clearCart}>
+            Clear cart
+          </Button>
+        </Flex>
+      </Stack>
+      {products !== null && (
+        <Box
+          as="section"
+          aria-labelledby="summary-heading"
+          p="6"
+          surface="paper"
+          border
+        >
+          <Stack gap="5">
+            <Heading as="h2" id="summary-heading">
+              Order Summary
+            </Heading>
+            <Text role="status" muted>
+              {totalItems} {totalItems === 1 ? "item" : "items"}
+            </Text>
+            <Flex justify="between" wrap>
+              <Text>
+                {allAvailable ? "Subtotal" : "Available items subtotal"}
+              </Text>
+              <Text look="price">{formatCurrency(subtotal)}</Text>
+            </Flex>
+            {printingSubtotal > 0 && (
+              <Text look="small" muted>
+                Includes {formatCurrency(printingSubtotal)} for name + number
+                printing.
+              </Text>
+            )}
+            <Text muted>
+              Delivery is not included. Checkout is coming soon; no order will
+              be placed.
+            </Text>
+            {!allAvailable && (
+              <Text role="status">
+                Resolve unavailable selections before ordering. They are
+                excluded from this subtotal.
+              </Text>
+            )}
+            {allAvailable && (
+              <LinkButton href="/checkout" fullWidth>
+                Review order preview →
+              </LinkButton>
+            )}
+            <LinkButton href="/shop" fullWidth variant="surface">
+              Continue shopping
+            </LinkButton>
+            <LinkButton href="/guide" variant="link">
+              Shopping information
+            </LinkButton>
+          </Stack>
+        </Box>
+      )}
+    </CartLayout>
   );
 }

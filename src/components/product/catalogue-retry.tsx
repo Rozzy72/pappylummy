@@ -1,18 +1,23 @@
 "use client";
-
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-
+import { Stack, Text, Button } from "@sd/ui";
 export function CatalogueRetry() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <div role="status" className="my-6 rounded-md border border-neutral-300 p-4">
-      <p>We could not load current product details. Your saved selections are preserved.</p>
-      <button type="button" disabled={pending} onClick={() => startTransition(() => router.refresh())}
-        className="mt-3 min-h-11 rounded-md border px-4 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50">
+    <Stack role="status" p="4" border>
+      <Text>
+        We could not load current product details. Your saved selections are
+        preserved.
+      </Text>
+      <Button
+        variant="outline"
+        disabled={pending}
+        onClick={() => startTransition(() => router.refresh())}
+      >
         {pending ? "Retrying…" : "Retry product details"}
-      </button>
-    </div>
+      </Button>
+    </Stack>
   );
 }

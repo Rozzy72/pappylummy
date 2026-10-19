@@ -1,3 +1,4 @@
+import { jerseyUnitPrice } from "@/lib/personalization";
 import type { CartItem } from "@/types/cart";
 import type { Product } from "@/types/product";
 
@@ -23,7 +24,7 @@ export function selectCart(items: readonly CartItem[], products: readonly Produc
 // calculate trusted totals there; neither localStorage nor this snapshot authorizes payment.
 export function availableSubtotal(lines: readonly CartSelection[]): number {
   return lines.reduce((total, line) => total + (line.status === "available" && line.product
-    ? line.product.price * line.item.quantity : 0), 0);
+    ? jerseyUnitPrice(line.product.price, Boolean(line.item.personalization)) * line.item.quantity : 0), 0);
 }
 
 export function selectWishlist(ids: readonly string[], products: readonly Product[]): { products: Product[]; unavailableIds: string[] } {

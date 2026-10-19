@@ -1,0 +1,77 @@
+/* Neutral commerce, controlled Nigerian green identity. */
+:root {
+ --sd-background: #ffffff;
+ --sd-surface: #ffffff;
+ --sd-surface-muted: #f2f6f5;
+ --sd-surface-inverse: #092b25;
+ --sd-foreground: #092b25;
+ --sd-foreground-muted: #52676b;
+ --sd-foreground-inverse: #ffffff;
+ --sd-border: #dce6e3;
+ --sd-border-strong: #80968e;
+ --sd-action: #087a3d;
+ --sd-action-hover: #075c36;
+ --sd-action-foreground: #ffffff;
+ --sd-brand-accent: #22c55e;
+ --sd-brand-accent-hover: #17ae50;
+ --sd-brand-accent-foreground: #05271b;
+ --sd-success: #17643a;
+ --sd-warning: #795000;
+ --sd-danger: #a12f33;
+ --sd-info: #245c8a;
+ --sd-focus-ring: #14673b;
+ --sd-focus-ring-inverse: #22c55e;
+ --sd-media-background: #f1f5f4;
+ --sd-editorial-scrim: rgb(0 0 0 / 55%);
+ --sd-radius-sm: 4px;
+ --sd-radius-md: 8px;
+ --sd-radius-lg: 8px;
+ --sd-space-0: 0;
+ --sd-space-1: .25rem;
+ --sd-space-2: .5rem;
+ --sd-space-3: .75rem;
+ --sd-space-4: 1rem;
+ /* Legacy 20/28px steps retained to avoid unrelated page rewrites. */
+ --sd-space-5: 1.25rem;
+ --sd-space-6: 1.5rem;
+ --sd-space-7: 1.75rem;
+ --sd-space-8: 2rem;
+ --sd-space-9: 3rem;
+ --sd-space-10: 4rem;
+ --sd-space-11: 6rem;
+ --sd-page-gutter: clamp(1rem, 3vw, 2rem);
+ --sd-section-space: clamp(1.5rem, 3vw, 2.5rem);
+ --sd-editorial-space: clamp(1.5rem, 3vw, 2.5rem);
+ --sd-content-width: 80rem;
+ --sd-measure-body: 65ch;
+ --sd-measure-heading: 22ch;
+ --sd-type-display-xl: clamp(3rem, 7vw, 7rem);
+ --sd-type-display-lg: clamp(2.5rem, 5.5vw, 5rem);
+ --sd-type-heading-lg: clamp(2rem, 3.5vw, 3rem);
+ --sd-type-heading: clamp(1.5rem, 2.5vw, 2rem);
+ --sd-type-body: 1rem;
+ --sd-type-body-small: .875rem;
+ --sd-type-meta: .75rem;
+ /* Compatibility aliases, not competing identities. */
+ --sd-bg: var(--sd-background);
+ --sd-fg: var(--sd-foreground);
+ --sd-muted: var(--sd-foreground-muted);
+ --sd-material: var(--sd-surface-muted);
+ --sd-brand: var(--sd-action);
+ --sd-brand-hover: var(--sd-action-hover);
+ --sd-brand-fg: var(--sd-action-foreground);
+ --sd-accent: var(--sd-brand-accent);
+}
+
+:root {
+  --sd-kit-forest: #165e43;
+  --sd-kit-scarlet: #bb263c;
+  --sd-kit-royal: #224b92;
+  --sd-kit-gold: #efc644;
+  --sd-kit-ink: #232d37;
+  --sd-kit-paper: #f2eee3;
+  --sd-kit-print: #faf8ef;
+  --sd-kit-seam: #111814;
+  --sd-kit-shadow: #b8beb7;
+}
+

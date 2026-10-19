@@ -1,36 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Naija Kits
 
-## Getting Started
+A Nigeria-focused football jersey storefront using Next.js App Router, Supabase and Zustand.
 
-First, run the development server:
+## Local development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Install the locked dependencies with `npm ci`, configure `.env.local` using `.env.example` and `docs/supabase-setup.md`, then run `npm run dev`. The storefront runs at http://localhost:3000. Supabase must be reachable for live catalogue reads. Never substitute fabricated products when catalogue reads fail.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Styling
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The approved styling-discipline policy is adapted to this single-app repository. Shared primitives are in `packages/ui` and imported as `@sd/ui`; semantic tokens are in `packages/tokens`. Application components use closed props rather than utility strings. `docs/styling-policy.md` records the CSS allowlist mapping and checks.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Verification
 
-## Learn More
+- `npm run verify`: styling guard, TypeScript, application lint and production build.
+- `npm test`: local regression tests with synthetic fixtures; no live database mutation.
+- Lint covers application code, shared packages, scripts, tests and configuration. The pre-existing ignored local checkout runner is separate development tooling.
 
-To learn more about Next.js, take a look at the following resources:
+## Current scope
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Catalogue, product discovery, guest cart/wishlist and authentication are implemented. Collection links filter the shop by team/category. Product images remain development previews. Checkout, payments, delivery terms, returns and verified sizing are unfinished. Checkout migration 003 remains an undeployed experiment. This redesign does not modify database migrations, credentials or authorization policies.

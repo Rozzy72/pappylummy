@@ -26,6 +26,7 @@ function load(path){
    if(mocks[specifier]||specifier.startsWith("@/components/")||specifier==='next/link'){
      dependency=join(temp,"mock-"+Buffer.from(specifier).toString("hex")+".cjs");
      writeFileSync(dependency,mocks[specifier]??'module.exports=new Proxy({}, {get:(_,name)=>name});');
+   }else if(specifier === "@sd/ui"){ dependency=load("packages/ui/src/index.tsx");
    }else if(specifier.startsWith("@/")||specifier.startsWith(".")){
      const base=specifier.startsWith("@/")?resolve(root,"src",specifier.slice(2)):resolve(dirname(absolute),specifier);
      dependency=load(base+(existsSync(base+".ts")?".ts":".tsx"));
@@ -56,8 +57,8 @@ function elements(tree){if(!tree||typeof tree!=='object')return [];return [tree,
 const props=slug=>({params:Promise.resolve({slug})});
 test("homepage and shop receive adapted API products, not static names",async()=>{
  const home=elements(await NewArrivals()).find(e=>e.type==='ProductGrid').props.products;
- assert.equal(home.length,4);assert(home.every(p=>p.isNew&&p.name.startsWith('API: ')&&p.id.includes('-')));
- const shop=elements(await Shop()).find(e=>e.type==='ShopCatalogue').props.products;
+ assert.equal(home.length,5);assert(home.every(p=>p.name.startsWith('API: ')&&p.id.includes('-')));assert(home.slice(0,4).every(p=>p.isNew));
+ const shop=elements(await Shop({searchParams:Promise.resolve({})})).find(e=>e.type==='ShopCatalogue').props.products;
  assert.equal(shop.length,12);assert(shop.every(p=>p.name.startsWith('API: ')));assert.equal(shop[0].slug,'ac-milan-home');
 });
 test("UUID catalogue retains combined filters and all sorting modes",async()=>{
@@ -74,7 +75,7 @@ test("UUID catalogue retains combined filters and all sorting modes",async()=>{
 test("detail/metadata map valid UUID row; related section uses one catalogue request",async()=>{
  calls=[];const tree=await Detail(props('arsenal-home'));assert.equal(calls.length,2);
  const action=elements(tree).find(e=>e.type==='ProductActions');assert.equal(action.props.product.id,normalizeProductId('jersey-002'));
- const metadata=await generateMetadata(props('arsenal-home'));assert.equal(metadata.title,'API: Arsenal Red Home Supporter Jersey | Naija Kits');
+ const metadata=await generateMetadata(props('arsenal-home'));assert.equal(metadata.title,'API: Arsenal Red Home Supporter Jersey | PappyLummy');
  const related=elements(tree).find(e=>e.type==='ProductGrid').props.products;assert(related.length<=4);assert(related.every(p=>p.id!==action.props.product.id&&p.name.startsWith('API: ')));
 });
 test("invalid, missing and inactive products take not-found path",async()=>{
@@ -94,7 +95,7 @@ test("AC Milan is publicly listed but passes unavailable state to actions",async
  const {useCartStore}=require(load('src/store/cart-store.ts'));useCartStore.setState({hydrated:true});assert.equal(useCartStore.getState().addItem(action.props.product,'M',1),false);
 });
 test("query errors fail visibly without raw diagnostics or static fallback",async()=>{
- fail=true;try{await assert.rejects(NewArrivals(),{message:'Unable to load products.'});await assert.rejects(Shop(),{message:'Unable to load products.'});await assert.rejects(Detail(props('arsenal-home')),{message:'Unable to load product.'});}finally{fail=false;}
+ fail=true;try{await assert.rejects(NewArrivals(),{message:'Unable to load products.'});await assert.rejects(Shop({searchParams:Promise.resolve({})}),{message:'Unable to load products.'});await assert.rejects(Detail(props('arsenal-home')),{message:'Unable to load product.'});}finally{fail=false;}
 });
 
 
@@ -111,3 +112,24 @@ test('cart and wishlist server pages each fetch one current adapted snapshot', a
   try{assert.equal(elements(await Page()).find(e=>e.type===name).props.products,null);}finally{rows=before;}
  }
 });
+
+ test('national collection spans categories and excludes clubs with country metadata', async()=>{
+ const catalogue=await queries.getProducts(); const base={club:'',league:'',category:'',size:'',teamType:'national'};
+ const expected=['brazil-international','nigeria-home','nigeria-retro'];
+ const national=filterAndSortProducts(catalogue,base,'name');
+ assert.deepEqual(national.map(p=>p.slug).sort(),expected);
+ assert(national.every(p=>!p.club && p.country));
+ for(const team of ['Nigeria','Brazil','Arsenal']) {
+ const ordinary=filterAndSortProducts(catalogue,{...base,teamType:'',club:team},'featured');
+ assert.equal(ordinary.length,team==='Nigeria'?2:1);
+ }
+ assert.equal(filterAndSortProducts(catalogue,{...base,category:'retro'},'featured')[0].slug,'nigeria-retro');
+ assert.equal(filterAndSortProducts(catalogue,{...base,club:'Arsenal'},'featured').length,0);
+ for(const {value} of sortOptions) assert.equal(filterAndSortProducts(catalogue,base,value).length,3);
+ const sorted=filterAndSortProducts(catalogue,base,'price-asc'); assert(sorted.every((p,i)=>!i||p.price>=sorted[i-1].price));
+ });
+ test('shop supplies catalogue without a competing initial filter snapshot', async()=>{
+ const tree=elements(await Shop()).find(e=>e.type==='ShopCatalogue');
+ assert.deepEqual(Object.keys(tree.props),['products']);
+ assert.equal(tree.key,null);
+ });

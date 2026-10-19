@@ -1,0 +1,61 @@
+{
+  "mode": "built-in imagegen",
+  "basePrompt": "Use case: product-mockup. Make ONLY a high resolution 4:5 portrait, straight-on BACK view of a football jersey, whole garment visible, neutral very pale grey studio backdrop, premium realistic fabric and seam shading, lit softly like the customisation screen in the owner's design board. This is a generated lettering illustration, not verified merchandise photography. Use the supplied front jersey as colour and cut reference ONLY, infer a simple uncluttered back in those colours. Centred symmetric shirt with collar at y=8% of canvas, bottom hem at y=94%, both sleeves entirely visible, shoulder width about82% of canvas, torso width about52%. Upper back faces camera directly, NO perspective tilt, no person, no mannequin, no hands. Keep center of back smooth and clear for live HTML lettering. CRITICAL: blank shirt back, NO NAME, NO NUMBER, NO TEXT, NO WORDS, no logos, no printed graphics on center back. Do not include a front neck opening or front chest. A clean back silhouette with shallow back collar neckline.",
+  "variants": [
+    [
+      "arsenal-home",
+      "ARSENAL.png",
+      "red torso, white sleeves and red cuffs"
+    ],
+    [
+      "barcelona-home",
+      "BARCELONA.png",
+      "royal blue and deep red vertical stripes, yellow collar and cuffs"
+    ],
+    [
+      "bayern-munich-home",
+      "BAYERN-MUNICH.png",
+      "red torso and red sleeves, white collar trim"
+    ],
+    [
+      "brazil-international",
+      "BRAZIL.png",
+      "yellow torso and sleeves, green collar and sleeve cuffs"
+    ],
+    [
+      "chelsea-away",
+      "CHELSEA AWAY.png",
+      "off-white torso and sleeves, dark royal blue collar and cuff piping"
+    ],
+    [
+      "liverpool-home",
+      "LIVERPOOL.png",
+      "dark red torso and sleeves, thin white pinstripes and cream collar trim"
+    ],
+    [
+      "manchester-city-third",
+      "MANCHESTER-CITY.png",
+      "pale sky blue torso and sleeves, navy collar trim"
+    ],
+    [
+      "manchester-united-home",
+      "MANCHESTER-UNITED.png",
+      "red torso and sleeves, black collar and cuffs"
+    ],
+    [
+      "nigeria-retro",
+      "NIGERIA-RETRO-REPLACEMENT.png",
+      "emerald green torso and sleeves with geometric green patterned sides and white central stripe"
+    ],
+    [
+      "real-madrid-player",
+      "REAL-MADRID-REPLACEMENT-V2.png",
+      "white torso and sleeves, dark collar piping"
+    ],
+    [
+      "nigeria-home",
+      null,
+      "dark emerald green torso and sleeves, subtle geometric green pattern and white collar piping"
+    ]
+  ]
+}

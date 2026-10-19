@@ -1,7 +1,17 @@
-﻿"use client";
+"use client";
 
+import { PERSONALIZATION_PRICE, jerseyUnitPrice } from "@/lib/personalization";
 import { ProductImage } from "@/components/product/product-image";
-import Link from "next/link";
+import {
+  CartLinePanel,
+  Stack,
+  Flex,
+  Text,
+  Heading,
+  NavLink,
+  Button,
+  ImageFrame, Disclosure, Icon,
+} from "@sd/ui";
 import type { CartSelection } from "@/lib/products/selection";
 import { MAX_CART_QUANTITY, useCartStore } from "@/store/cart-store";
 import { formatCurrency } from "@/utils/format-currency";
@@ -9,32 +19,137 @@ import { formatCurrency } from "@/utils/format-currency";
 export function CartLine({ line }: { line: CartSelection }) {
   const { item, product, status } = line;
   const available = status === "available";
-  const title = product?.name ?? (status === "unverified" ? "Product details unavailable" : "Product unavailable");
+  const title =
+    product?.name ??
+    (status === "unverified"
+      ? "Product details unavailable"
+      : "Product unavailable");
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
-  const identity = `${title}, size ${item.selectedSize}`;
-  const controlStyle = "size-11 rounded-md border border-neutral-300 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40";
+  const identity = `${title}, size ${item.selectedSize}${item.personalization ? `, ${item.personalization.name} ${item.personalization.number}` : ""}`;
+  const sizeTotal = useCartStore((state) =>
+    state.items
+      .filter(
+        (i) =>
+          i.productId === item.productId &&
+          i.selectedSize === item.selectedSize,
+      )
+      .reduce((sum, i) => sum + i.quantity, 0),
+  );
 
   return (
-    <li className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b border-neutral-200 py-6 sm:grid-cols-[7rem_minmax(0,1fr)]">
-      {product && <ProductImage reference={product.image} productId={product.id} alt={product.name} width={112} height={140} className="h-auto w-full rounded-md bg-neutral-100" />}
-      <div className={`min-w-0 ${product ? "" : "col-span-2"}`}>
-        <h2 className="text-base font-semibold">
-          {product ? <Link href={`/product/${encodeURIComponent(product.slug)}`} className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">{title}</Link> : title}
-        </h2>
-        <p className="mt-1 text-sm text-neutral-600">Size: {item.selectedSize}</p>
-        {product && <p className="mt-2 text-sm">Unit price: {formatCurrency(product.price)}</p>}
-        {!available && <p className="mt-2 text-sm font-medium">{status === "out-of-stock" ? "Out of stock. Remove this item or check back later." : status === "size-unavailable" ? "This size is no longer available. Open the product to choose another size, then remove this selection." : status === "unverified" ? "Retry product details to check availability." : "This product is no longer available. You can remove this selection."}</p>}
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div role="group" aria-label={`Quantity for ${identity}`} className="flex items-center gap-2">
-            <button type="button" className={controlStyle} aria-label={`Decrease quantity for ${identity}`} disabled={item.quantity <= 1} onClick={() => updateQuantity(item.productId, item.selectedSize, item.quantity - 1)}>−</button>
-            <output aria-live="polite" aria-label={`Quantity for ${identity}`} className="min-w-6 text-center">{item.quantity}</output>
-            <button type="button" className={controlStyle} aria-label={`Increase quantity for ${identity}`} disabled={!available || item.quantity >= MAX_CART_QUANTITY} onClick={() => updateQuantity(item.productId, item.selectedSize, item.quantity + 1)}>+</button>
-          </div>
-          <button type="button" aria-label={`Remove ${identity} from cart`} onClick={() => removeItem(item.productId, item.selectedSize)} className="min-h-11 rounded-sm px-2 text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Remove</button>
-        </div>
-        {available && product && <p className="mt-4 text-sm font-semibold">Line total: {formatCurrency(product.price * item.quantity)}</p>}
-      </div>
-    </li>
+    <CartLinePanel>
+      <Flex align="start" gap="4">
+        {product && (
+          <ImageFrame kind="thumb">
+            <ProductImage
+              reference={product.image}
+              productId={product.id}
+              alt={product.name}
+              fill
+              sizes="96px"
+            />
+          </ImageFrame>
+        )}
+        <Stack gap="2" grow>
+          <Heading as="h3">
+            {product ? (
+              <NavLink href={`/product/${encodeURIComponent(product.slug)}`}>
+                {title}
+              </NavLink>
+            ) : (
+              title
+            )}
+          </Heading>
+          <Text look="small" muted>
+            Size: {item.selectedSize}
+          </Text>
+          {item.personalization && (
+            <Text look="small">
+              Personalization: {item.personalization.name} ·{" "}
+              {item.personalization.number}
+            </Text>
+          )}
+          {product && (
+            <Text look="small">
+              Unit price: {formatCurrency(jerseyUnitPrice(product.price,Boolean(item.personalization)))}
+            </Text>
+          )}
+          {product && item.personalization && <Disclosure title="Printing price details"><Text look="small">Base jersey price: {formatCurrency(product.price)}. Name + number printing: {formatCurrency(PERSONALIZATION_PRICE)} per jersey.</Text></Disclosure>}
+          {!available && (
+            <Text look="small">
+              {status === "out-of-stock"
+                ? "Out of stock. Remove this item or check back later."
+                : status === "size-unavailable"
+                  ? "This size is no longer available. Choose another size on the product page."
+                  : status === "unverified"
+                    ? "Retry product details to check availability."
+                    : "This product is no longer available."}
+            </Text>
+          )}
+          <Flex gap="2" wrap>
+            <Flex gap="2" role="group" aria-label={`Quantity for ${identity}`}>
+              <Button
+                variant="surface"
+                size="1"
+                aria-label={`Decrease quantity for ${identity}`}
+                disabled={item.quantity <= 1}
+                onClick={() =>
+                  updateQuantity(
+                    item.productId,
+                    item.selectedSize,
+                    item.quantity - 1,
+                    item.personalization,
+                  )
+                }
+              >
+                −
+              </Button>
+              <output
+                aria-live="polite"
+                aria-label={`Quantity for ${identity}`}
+              >
+                {item.quantity}
+              </output>
+              <Button
+                variant="surface"
+                size="1"
+                aria-label={`Increase quantity for ${identity}`}
+                disabled={!available || sizeTotal >= MAX_CART_QUANTITY}
+                onClick={() =>
+                  updateQuantity(
+                    item.productId,
+                    item.selectedSize,
+                    item.quantity + 1,
+                    item.personalization,
+                  )
+                }
+              >
+                +
+              </Button>
+            </Flex>
+            <Button
+              variant="link"
+              size="1"
+              aria-label={`Remove ${identity} from cart`}
+              onClick={() =>
+                removeItem(
+                  item.productId,
+                  item.selectedSize,
+                  item.personalization,
+                )
+              }
+            >
+              Remove
+            </Button>
+          </Flex>
+          {available && product && (
+            <Text look="card">
+              Line total: {formatCurrency(jerseyUnitPrice(product.price, Boolean(item.personalization)) * item.quantity)}
+            </Text>
+          )}
+        </Stack>
+      </Flex>
+    </CartLinePanel>
   );
 }

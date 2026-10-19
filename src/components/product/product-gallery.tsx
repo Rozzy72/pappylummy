@@ -1,37 +1,12 @@
-﻿import { ProductImage } from "@/components/product/product-image";
-import type { Product } from "@/types/product";
-import { getProductGallery, productPlaceholder } from "@/utils/product-image";
-
-type ProductGalleryProps = {
-  product: Pick<Product, "id" | "name" | "image" | "images">;
-};
-
-export function ProductGallery({ product }: ProductGalleryProps) {
-  const images = getProductGallery(product.image, product.images, product.id);
-
-  return (
-    <section aria-label={`Images of ${product.name}`} className="space-y-4">
-      {images.map((src, index) => (
-        <figure key={src} className="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-          <div className="relative aspect-[4/5]">
-            <ProductImage
-              reference={src}
-              productId={product.id}
-              alt={src === productPlaceholder
-                ? `Placeholder for ${product.name}; product photography coming soon`
-                : `${product.name}, view ${index + 1}`}
-              fill
-              sizes="(min-width: 1280px) 576px, (min-width: 1024px) 50vw, 100vw"
-              className="object-contain p-6"
-            />
-          </div>
-          {src === productPlaceholder && (
-            <figcaption className="px-4 pb-4 text-center text-xs text-neutral-600">
-              Product photography coming soon.
-            </figcaption>
-          )}
-        </figure>
-      ))}
-    </section>
-  );
+"use client";
+import {useState} from "react";
+import {Stack,ImageFrame,Text,ProductGalleryPanel,GalleryLayout,Button} from "@sd/ui";
+import {ProductImage} from "./product-image";
+import type {Product} from "@/types/product";
+import {getProductGallery,productPlaceholder} from "@/utils/product-image";
+export function ProductGallery({product}:{product:Pick<Product,"id"|"name"|"image"|"images">}){
+ const images=getProductGallery(product.image,product.images,product.id),[selected,setSelected]=useState(0);
+ const index=selected<images.length?selected:0;
+ const alt=(src:string,i:number)=>src===productPlaceholder?"Placeholder for "+product.name+"; product photography coming soon":product.name+", view "+(i+1);
+ return <ProductGalleryPanel><Stack as="section" aria-label={"Images of "+product.name} gap="3"><GalleryLayout rail={images.map((src,i)=><Button key={src} variant={index===i?"solid":"surface"} aria-label={"Show view "+(i+1)+" of "+product.name} aria-pressed={index===i} onClick={()=>setSelected(i)}><ImageFrame kind="thumb"><ProductImage reference={src} productId={product.id} alt={alt(src,i)} fill sizes="64px"/></ImageFrame></Button>)}><ImageFrame kind="detail"><ProductImage reference={images[index]} productId={product.id} alt={alt(images[index],index)} loading="eager" fill sizes="(min-width:1024px) 44vw, 90vw"/></ImageFrame></GalleryLayout><Text look="small" muted>Collection imagery is a development preview.</Text></Stack></ProductGalleryPanel>;
 }

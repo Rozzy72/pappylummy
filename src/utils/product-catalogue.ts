@@ -1,6 +1,7 @@
 ﻿import type { JerseySize, Product, ProductCategory } from "@/types/product";
 
 export type CatalogueFilters = {
+  teamType?: "national" | "";
   club: string;
   league: string;
   category: ProductCategory | "";
@@ -28,6 +29,7 @@ export function filterAndSortProducts(
 ): Product[] {
   const results = products.filter(
     (product) =>
+      (filters.teamType !== "national" || (!product.club && Boolean(product.country))) &&
       (!filters.club || getTeam(product) === filters.club) &&
       (!filters.league || product.league === filters.league) &&
       (!filters.category || product.category === filters.category) &&

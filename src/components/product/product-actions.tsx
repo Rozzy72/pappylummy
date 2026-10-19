@@ -1,9 +1,22 @@
-﻿"use client";
+"use client";
 
+import {
+  Stack,
+  Flex,
+  Button,
+  Text,
+  ProductOptions,
+  NavLink,
+  Disclosure,
+  PersonalizationFields, SwitchLabel, FieldLabel, Input, PurchaseActions,
+} from "@sd/ui";
 import { useId, useState } from "react";
 import type { JerseySize, Product } from "@/types/product";
 import { MAX_CART_QUANTITY, useCartStore } from "@/store/cart-store";
 import { useCartHydration } from "@/components/cart/use-cart-hydration";
+
+import {parsePersonalization,PERSONALIZATION_PRICE,jerseyUnitPrice} from "@/lib/personalization";
+import {formatCurrency} from "@/utils/format-currency";
 
 type ProductActionsProps = { product: Product };
 
@@ -15,62 +28,107 @@ export function ProductActions({ product }: ProductActionsProps) {
   const [selectedSize, setSelectedSize] = useState<JerseySize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [feedback, setFeedback] = useState("");
+  const [custom,setCustom]=useState(false),[name,setName]=useState(""),[number,setNumber]=useState("");
+  const personalization=custom?parsePersonalization({name,number}):undefined;
   const hydrated = useCartHydration();
   const addItem = useCartStore((state) => state.addItem);
   const messageId = useId();
   const canSelect = inStock && sizes.length > 0;
 
   return (
-    <div className="mt-8 border-t border-neutral-200 pt-6">
-      <fieldset disabled={!canSelect}>
-        <legend className="text-sm font-semibold">Select size</legend>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {sizes.map((size) => (
-            <button
-              key={size}
+    <ProductOptions>
+      <Stack gap="5">
+
+        <fieldset disabled={!canSelect}>
+          <legend>Select size</legend>
+          <Flex gap="2" wrap>
+            {sizes.map((size) => (
+              <Button
+                key={size}
+                type="button"
+                aria-pressed={selectedSize === size}
+                onClick={() => {
+                  setSelectedSize(size);
+                  setFeedback("");
+                }}
+                variant={selectedSize === size ? "solid" : "surface"}
+              >
+                {size}
+              </Button>
+            ))}
+          </Flex>
+        </fieldset>
+        <PersonalizationFields><SwitchLabel><span>Add name & number (+{formatCurrency(PERSONALIZATION_PRICE)})</span><input type="checkbox" role="switch" checked={custom} onChange={e=>{setCustom(e.target.checked);setFeedback("");}} /></SwitchLabel>{custom&&<Flex gap="3"><Stack gap="1"><FieldLabel htmlFor={messageId+"-name"}>Name (max. 16 characters)</FieldLabel><Input id={messageId+"-name"} value={name} maxLength={16} placeholder="e.g. ADEBAYO" onChange={e=>setName(e.target.value)} /></Stack><Stack gap="1"><FieldLabel htmlFor={messageId+"-number"}>Number (0–99)</FieldLabel><Input id={messageId+"-number"} inputMode="numeric" value={number} maxLength={2} placeholder="e.g. 10" onChange={e=>setNumber(e.target.value.replace(/[^0-9]/g,""))} /></Stack></Flex>}{custom&&<Text look="small">Personalized unit price: {formatCurrency(jerseyUnitPrice(product.price,true))}</Text>}</PersonalizationFields>
+        <Disclosure title="Choosing your size">
+          <Text look="small" muted>
+            Choose from the sizes available for this jersey. Verified garment
+            measurements are not yet available; size labels alone do not
+            guarantee fit.
+          </Text>
+          <NavLink href="/guide">Sizing & shopping information →</NavLink>
+        </Disclosure>
+        <PurchaseActions><fieldset disabled={!canSelect}>
+          <legend>Quantity</legend>
+          <Flex gap="3">
+            <Button
               type="button"
-              aria-pressed={selectedSize === size}
-              onClick={() => { setSelectedSize(size); setFeedback(""); }}
-              className={`min-h-11 min-w-11 rounded-md border px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${selectedSize === size ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-300 bg-white hover:bg-neutral-100"}`}
+              aria-label="Decrease quantity"
+              disabled={!canSelect || quantity <= 1}
+              onClick={() => setQuantity((current) => Math.max(1, current - 1))}
             >
-              {size}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset disabled={!canSelect} className="mt-6">
-        <legend className="text-sm font-semibold">Quantity</legend>
-        <div className="mt-3 inline-flex items-center rounded-md border border-neutral-300">
-          <button type="button" aria-label="Decrease quantity" disabled={!canSelect || quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="size-11 rounded-md text-lg hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40">
-            −
-          </button>
-          <output aria-live="polite" aria-label="Quantity" className="min-w-12 text-center text-sm font-semibold">{quantity}</output>
-          <button type="button" aria-label="Increase quantity" disabled={!canSelect || quantity >= maxQuantity} onClick={() => setQuantity((current) => Math.min(maxQuantity, current + 1))} className="size-11 rounded-md text-lg hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40">
-            +
-          </button>
-        </div>
-      </fieldset>
-      <button
-        type="button"
-        disabled={!hydrated || !canSelect || !selectedSize}
-        aria-describedby={messageId}
-        onClick={() => {
-          if (!selectedSize) return;
-          const added = addItem(product, selectedSize, quantity);
-          setFeedback(added ? `Added to cart: size ${selectedSize}, quantity ${quantity}.` : `Could not add this quantity. The cart limit is ${maxQuantity} per product and size.`);
-        }}
-        className="mt-6 min-h-12 w-full rounded-md bg-neutral-950 px-6 py-3 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-4 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-600"
-      >
-        {inStock ? "Add to Cart" : "Out of stock"}
-      </button>
-      <p id={messageId} className="mt-3 text-sm leading-6 text-neutral-600">
-        {!inStock
-          ? "This jersey is currently out of stock."
-          : sizes.length === 0
-            ? "No sizes are currently available for this jersey."
-            : !hydrated ? "Loading your cart…" : !selectedSize ? "Select a size to add this jersey to your cart." : `Maximum ${maxQuantity} per product and size in your cart.`}
-      </p>
-      <p role="status" aria-atomic="true" className="mt-2 text-sm font-medium">{feedback}</p>
-    </div>
+              −
+            </Button>
+            <output aria-live="polite" aria-label="Quantity">
+              {quantity}
+            </output>
+            <Button
+              type="button"
+              aria-label="Increase quantity"
+              disabled={!canSelect || quantity >= maxQuantity}
+              onClick={() =>
+                setQuantity((current) => Math.min(maxQuantity, current + 1))
+              }
+            >
+              +
+            </Button>
+          </Flex>
+        </fieldset>
+        <Button
+          type="button"
+          disabled={!hydrated || !canSelect || !selectedSize || (custom&&!personalization)}
+          fullWidth
+          size="3"
+          aria-describedby={messageId}
+          onClick={() => {
+            if (!selectedSize || (custom&&!personalization)) return;
+            const added = addItem(product, selectedSize, quantity, personalization ?? undefined);
+            setFeedback(
+              added
+                ? `Added to cart: size ${selectedSize}, quantity ${quantity}.`
+                : `Could not add this quantity. The cart limit is ${maxQuantity} per product and size.`,
+            );
+          }}
+        >
+          {inStock ? "Add to Cart" : "Out of stock"}
+        </Button></PurchaseActions>
+        <Text id={messageId} look="small" muted>
+          {!inStock
+            ? "This jersey is currently out of stock."
+            : sizes.length === 0
+              ? "No sizes are currently available for this jersey."
+              : !hydrated
+                ? "Loading your cart…"
+                : !selectedSize
+                  ? "Select a size to add this jersey to your cart."
+                  : `Maximum ${maxQuantity} per product and size in your cart.`}
+        </Text>
+        <Text role="status" aria-atomic="true" look="small">
+          {feedback}
+        </Text>
+        {feedback.startsWith("Added") && (
+          <NavLink href="/cart">View your bag →</NavLink>
+        )}
+      </Stack>
+    </ProductOptions>
   );
 }
