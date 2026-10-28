@@ -11,3 +11,7 @@ docs
 *.tsbuildinfo
 AGENTS.md
 CLAUDE.md
+
+/supabase/
+
+public/campaigns/alex-iwobi-hero-review.jpg

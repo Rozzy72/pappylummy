@@ -65,10 +65,10 @@ export function CartLine({ line }: { line: CartSelection }) {
             Size: {item.selectedSize}
           </Text>
           {item.personalization && (
-            <Text look="small">
-              Personalization: {item.personalization.name} ·{" "}
-              {item.personalization.number}
-            </Text>
+            <>
+              <Text look="small">Personalization: {item.personalization.name}</Text>
+              <Text look="small">Number: {item.personalization.number}</Text>
+            </>
           )}
           {product && (
             <Text look="small">

@@ -1,4 +1,5 @@
-export type Personalization = { name: string; number: string };
+export type LetteringFont = "Classic" | "Modern" | "Bold";
+export type Personalization = { name: string; number: string; font?: LetteringFont };
 export const MAX_PRINT_NAME = 16;
 /** Browser selections only; any future checkout must independently validate printing. */
 export function parsePersonalization(
@@ -22,7 +23,8 @@ export function parsePersonalization(
     !/^\d{1,2}$/.test(number)
   )
     return;
-  return { name, number };
+  if (input.font !== undefined && !["Classic", "Modern", "Bold"].includes(input.font as string)) return;
+  return { name, number, ...(input.font ? { font: input.font as LetteringFont } : {}) };
 }
 export function cartLineKey(item: {
   productId: string;
@@ -34,6 +36,7 @@ export function cartLineKey(item: {
     item.selectedSize,
     item.personalization?.name ?? "",
     item.personalization?.number ?? "",
+    item.personalization ? item.personalization.font ?? "Classic" : "",
   ]);
 }
 

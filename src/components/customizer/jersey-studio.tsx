@@ -35,7 +35,7 @@ export function JerseyStudio({
   products: Product[];
   initialSlug?: string;
 }) {
-  const available = products.filter((p) => p.inStock && p.sizes.length);
+  const available = products.filter((p) => p.inStock && p.sizes.length && (!initialSlug || p.slug === initialSlug));
   const [slug, setSlug] = useState(
     initialSlug ??
       available.find((p) => p.country === "Nigeria")?.slug ??
@@ -50,7 +50,7 @@ export function JerseyStudio({
   const [font,setFont] = useState<"Classic"|"Modern"|"Bold">("Classic");
   const hydrated = useCartHydration();
   const addItem = useCartStore((s) => s.addItem);
-  const print = parsePersonalization({ name, number });
+  const print = parsePersonalization({ name, number, font });
   if (!product)
     return <Text>No jerseys are currently available to personalize.</Text>;
   function add() {
@@ -65,21 +65,21 @@ export function JerseyStudio({
     <StudioLayout
       preview={
         <Stack gap="4">
-          <StudioGallery><StudioJerseyRail>{available.map(item=><Button key={item.id} variant={product.id===item.id?"solid":"surface"} aria-label={`Customise ${item.name}`} aria-pressed={product.id===item.id} onClick={()=>{setSlug(item.slug);setSize("");setView("back");setMessage("");}}><ImageFrame kind="thumb"><ProductImage reference={item.image} productId={item.id} alt={item.name} fill sizes="48px" /></ImageFrame></Button>)}</StudioJerseyRail><StudioStage>
+          <StudioGallery>{!initialSlug && <StudioJerseyRail>{available.map(item=><Button key={item.id} variant={product.id===item.id?"solid":"surface"} aria-label={`Customise ${item.name}`} aria-pressed={product.id===item.id} onClick={()=>{setSlug(item.slug);setSize("");setView("back");setMessage("");}}><ImageFrame kind="thumb"><ProductImage reference={item.image} productId={item.id} alt={item.name} fill sizes="48px" /></ImageFrame></Button>)}</StudioJerseyRail>}<StudioStage>
             <StudioTabs>
               <Button
                 variant={view === "back" ? "solid" : "link"}
                 aria-pressed={view === "back"}
                 onClick={() => setView("back")}
               >
-                Lettering template
+                Lettering preview
               </Button>
               <Button
                 variant={view === "front" ? "solid" : "link"}
                 aria-pressed={view === "front"}
                 onClick={() => setView("front")}
               >
-                Actual jersey
+                Jersey photo
               </Button>
             </StudioTabs>
             {view === "back" ? (
@@ -100,7 +100,7 @@ export function JerseyStudio({
               </ImageFrame>
             )}
           </StudioStage></StudioGallery>
-          {view==="front"&&<Text look="small" muted>Illustrative lettering preview. Choose Lettering template to preview your name and number.</Text>}
+          {view==="front"&&<Text look="small" muted>Choose Lettering preview to add your name and number.</Text>}
         </Stack>
       }
       controls={
@@ -155,7 +155,7 @@ export function JerseyStudio({
 
           </Stack>
           <StudioSelection>          <Stack gap="2">
-            <FieldLabel htmlFor="kit-jersey">Choose your jersey</FieldLabel>
+            {initialSlug ? <><Text look="small" muted>Selected jersey</Text><Text>{product.name}</Text></> : <><FieldLabel htmlFor="kit-jersey">Choose your jersey</FieldLabel>
             <Select
               id="kit-jersey"
               value={product.slug}
@@ -171,7 +171,7 @@ export function JerseyStudio({
                   {p.name}
                 </option>
               ))}
-            </Select>
+            </Select></>}
           </Stack>            <Stack gap="2">
               <FieldLabel htmlFor="kit-size">Jersey size</FieldLabel>
               <Select
@@ -188,7 +188,7 @@ export function JerseyStudio({
                 ))}
               </Select>
             </Stack></StudioSelection>
-          <fieldset><legend>Font Style (preview only)</legend><Flex gap="2">{(["Classic","Modern","Bold"] as const).map(style=><Button key={style} variant={font===style?"solid":"surface"} aria-pressed={font===style} onClick={()=>{setFont(style);setView("back");}}>{style}</Button>)}</Flex></fieldset>
+          <fieldset><legend>Font Style</legend><Flex gap="2">{(["Classic","Modern","Bold"] as const).map(style=><Button key={style} variant={font===style?"solid":"surface"} aria-pressed={font===style} onClick={()=>{setFont(style);setView("back");}}>{style}</Button>)}</Flex></fieldset>
           <Disclosure title="Price details"><Flex justify="between" wrap>
             <Text muted>Base jersey price</Text>
             <Text look="price">{formatCurrency(product.price)}</Text>

@@ -25,12 +25,9 @@ export function ProductLetteringPreview({ product, name, number }: { product: Pr
   const theme = getLetteringTheme(product.slug);
   return (
     <Stack gap="4">
-      <Text look="small">{product.name} — illustrative back template</Text>
+      <Text look="small">{product.name} — lettering preview</Text>
       {hasLetteringArtwork(product.slug)?<JerseyPhotoPreview jersey={product.slug} name={name} number={number}/>:<JerseyPreview {...(theme ?? { palette: "paper" })} name={name} number={number} />}
-      <Text look="small" muted>
-        {hasLetteringArtwork(product.slug)?"AI-generated illustration, not a photograph or verified back design.":theme ? "Approximate colour theme, not a photograph or verified back design." : "Neutral template: this product’s colours and back design are not verified."}
-        {" "}Lettering placement is illustrative. Check Actual jersey for the available product image.
-      </Text>
+      {!hasLetteringArtwork(product.slug) && !theme && <Text look="small" muted>Neutral template: colours and back design are unverified.</Text>}
     </Stack>
   );
 }

@@ -1,0 +1,5 @@
+import {Stack,Heading,Text,Flex,LinkButton,NavLink,Box} from '@sd/ui';
+import {adminProducts} from '@/lib/products/admin';
+import {formatCurrency} from '@/utils/format-currency';
+export const dynamic='force-dynamic';export const metadata={title:'Products and inventory | PappyLummy',robots:{index:false,follow:false}};
+export default async function Products(){const rows=await adminProducts();return <Stack gap='6'><Heading as='h1'>Products and inventory</Heading><Text>Manage jersey details, prices, available sizes and shop visibility.</Text><Flex gap='3' wrap><LinkButton href='/admin/products/new'>Add jersey</LinkButton><NavLink href='/admin/orders'>Order requests</NavLink></Flex>{rows===null?<Text role='status'>Products are temporarily unavailable.</Text>:rows.length===0?<Text>No jerseys yet.</Text>:rows.map(p=><Box key={p.id} border p='4'><Stack gap='2'><NavLink href={'/admin/products/'+p.id}>{p.name}</NavLink><Text>{formatCurrency(p.price_kobo/100)} · {p.in_stock?'In stock':'Out of stock'} · {p.is_active?'Visible':'Hidden'}</Text><Text look='small'>Sizes: {p.sizes.join(', ')||'None'}</Text></Stack></Box>)}</Stack>;}

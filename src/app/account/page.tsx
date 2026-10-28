@@ -1,11 +1,15 @@
-import { Stack, Box, Text, Heading } from "@sd/ui";
+import {profileAddress} from "@/lib/auth/validation";
+import { isAdminUser } from "@/lib/auth/require-admin";
+import { ProfileForm } from "@/components/auth/profile-form";
+import { Stack, Box, Text, Heading, NavLink, Disclosure } from "@sd/ui";
 import { requireUser } from "@/lib/auth/require-user";
 
 // Private rendering and fetches must never enter shared route/data caches.
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const { client, userId } = await requireUser();
+  const { client, userId, user } = await requireUser();
+  const contact = profileAddress(user.user_metadata);
   let profile: { full_name: string | null; phone: string | null } | null = null;
   try {
     const { data, error } = await client
@@ -24,8 +28,14 @@ export default async function AccountPage() {
           Your personal line-up
         </Text>
         <Heading as="h1" id="account-heading">
-          Your account.
+          My Account
         </Heading>
+        <Stack p="6" border surface="paper">
+          <Text look="small" muted>Email address</Text>
+          <Text>{user.email || "Not provided"}</Text>
+
+      </Stack>
+        {isAdminUser(userId) && <Stack gap="3"><NavLink href="/admin/orders">Manage order requests</NavLink><NavLink href="/admin/products">Manage products and inventory</NavLink></Stack>}
         {profile ? (
           <Stack p="6" border surface="paper">
             <Text look="small" muted>
@@ -36,11 +46,12 @@ export default async function AccountPage() {
               Phone
             </Text>
             <Text>{profile.phone || "Not provided"}</Text>
+            {contact?.address && <><Text look="small" muted>Address</Text><Text>{contact.address}</Text><Text look="small" muted>City</Text><Text>{contact.city || "Not provided"}</Text><Text look="small" muted>State / FCT</Text><Text>{contact.state || "Not provided"}</Text></>}
+            <Disclosure title="Edit details"><ProfileForm name={profile.full_name ?? ""} phone={profile.phone ?? ""} address={contact?.address ?? ""} city={contact?.city ?? ""} stateName={contact?.state ?? ""} /></Disclosure>
           </Stack>
         ) : (
           <Text role="status" muted>
-            Your account information is currently unavailable. Please try again
-            later.
+            Your additional profile details are currently unavailable. Your sign-in email is shown above.
           </Text>
         )}
       </Stack>

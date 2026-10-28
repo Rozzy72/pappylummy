@@ -1,4 +1,5 @@
 "use client";
+import { submitGuestOrder, type OrderResult } from "@/app/checkout/actions";
 import {
   Stack,
   Box,
@@ -14,7 +15,8 @@ import {
   Input,
   Form,
 } from "@sd/ui";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { NIGERIAN_STATES, stateDeliveryFee } from "@/lib/delivery";
 import { useCartHydration } from "@/components/cart/use-cart-hydration";
 import { useCartStore } from "@/store/cart-store";
@@ -26,19 +28,25 @@ import {
 } from "@/lib/personalization";
 import { CatalogueRetry } from "@/components/product/catalogue-retry";
 import { formatCurrency } from "@/utils/format-currency";
+import type { CheckoutDetails } from "@/lib/checkout/profile";
 import type { Product } from "@/types/product";
-export function CheckoutReview({ products }: { products: Product[] | null }) {
-  const [zone, setZone] = useState("");
+export function CheckoutReview({ products, ordersEnabled = false, initialDetails }: { products: Product[] | null; ordersEnabled?: boolean; initialDetails?: CheckoutDetails | null }) {
+  const router=useRouter();
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<OrderResult | null>(null);
+  const requestRef = useRef<{payload:string;key:string} | null>(null);
+  const [zone, setZone] = useState(initialDetails?.state ?? "");
   const fee = stateDeliveryFee(zone);
   const [details, setDetails] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
+    name: initialDetails?.name ?? "",
+    email: initialDetails?.email ?? "",
+    phone: initialDetails?.phone ?? "",
+    address: initialDetails?.address ?? "",
+    city: initialDetails?.city ?? "",
   });
   const [reviewed, setReviewed] = useState(false);
   function updateDetails(field: keyof typeof details, value: string) {
+    if (saving || result?.status === "success") return;
     setDetails((current) => ({ ...current, [field]: value }));
     setReviewed(false);
   }
@@ -55,6 +63,16 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
     );
   const lines = selectCart(items, products);
   const available = lines.every((l) => l.status === "available");
+  async function saveOrder() {
+    if (saving || !reviewed || !available || fee === null) return;
+    const payload = {items, delivery:{...details,state:zone},expectedTotalKobo:Math.round((availableSubtotal(lines)+fee)*100)};
+    const serialized=JSON.stringify(payload);
+    if(requestRef.current?.payload!==serialized)requestRef.current={payload:serialized,key:crypto.randomUUID()};
+    setSaving(true);setResult(null);
+    try{const saved=await submitGuestOrder({key:requestRef.current!.key,...payload});setResult(saved);if(saved.status==="success")router.push("/checkout/confirmation");}
+    catch{setResult({status:"error",message:"Unable to save your order request. Your bag has been kept."});}
+    finally{setSaving(false);}
+  }
   return (
     <Grid layout="split">
       <Stack gap="6">
@@ -74,10 +92,8 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                   </Text>
                   {item.personalization && (
                     <>
-                      <Text look="small">
-                        Name: {item.personalization.name} · Number:{" "}
-                        {item.personalization.number}
-                      </Text>
+                      <Text look="small">Personalization: {item.personalization.name}</Text>
+                      <Text look="small">Number: {item.personalization.number}</Text>
                       <Text look="small" muted>
                         Printing: {formatCurrency(PERSONALIZATION_PRICE)} per
                         jersey
@@ -122,6 +138,7 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                 setReviewed(true);
               }}
             >
+              <fieldset disabled={saving || result?.status === "success"}>
               {(
                 [
                   {
@@ -133,7 +150,7 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                   },
                   {
                     key: "email",
-                    label: "Email address",
+                    label: "Order contact email",
                     auto: "email",
                     type: "email",
                     max: 254,
@@ -200,6 +217,7 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                   required
                   value={zone}
                   onChange={(event) => {
+                    if (saving || result?.status === "success") return;
                     setZone(event.target.value);
                     setReviewed(false);
                   }}
@@ -214,12 +232,12 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                 </Select>
               </Stack>
               <Text look="small" muted>
-                Country: Nigeria. Your details stay on this page and are cleared
-                when you leave or reload.
+                Country: Nigeria. Delivery details are saved only when you submit an order request.
               </Text>
               <Button type="submit" fullWidth disabled={!available}>
                 Review delivery details
               </Button>
+              </fieldset>
             </Form>
             {reviewed && (
               <Box surface="muted" p="4">
@@ -234,10 +252,11 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
                     Nigeria
                   </Text>
                   <Text role="status">
-                    Details ready for review. No order has been submitted.
+                    {result?.status === "success" ? "Delivery details saved with your order request." : "Details ready for review. No order has been submitted."}
                   </Text>
                   <Button
                     variant="link"
+                    disabled={saving || result?.status === "success"}
                     onClick={() => {
                       setReviewed(false);
                       document.getElementById("delivery-name")?.focus();
@@ -294,12 +313,18 @@ export function CheckoutReview({ products }: { products: Product[] | null }) {
               are excluded from the subtotal.
             </Alert>
           )}
+          {ordersEnabled && <Stack gap="2">
+            <Text look="small">Save an unpaid order request as a guest. No payment is taken and stock is not reserved.</Text>
+            <Button fullWidth disabled={!reviewed || !available || fee === null || saving || result?.status === "success"} onClick={saveOrder}>{saving ? "Saving order request…" : "Save order request"}</Button>
+            {!reviewed && <Text look="small">Review your delivery details first.</Text>}
+            {result?.status === "success" && <LinkButton href="/checkout/confirmation">View your order request</LinkButton>}
+            {result && <Text role="status" aria-live="polite">{result.status === "success" ? `Order request saved. Reference: ${result.reference}. Total: ${formatCurrency(result.totalKobo/100)}. Awaiting payment; nothing has been charged.` : result.message}</Text>}
+          </Stack>}
           <Button disabled fullWidth>
             Payment coming soon
           </Button>
           <Text look="small" muted>
-            This is an order preview. No order is created, stock reserved, or
-            payment taken.
+            {ordersEnabled ? "Order requests remain unpaid. Payment and fulfilment are not enabled yet." : "This is an order preview. No order is created, stock reserved, or payment taken."}
           </Text>
         </Stack>
       </Box>

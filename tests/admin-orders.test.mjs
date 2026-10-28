@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {Module,createRequire} from 'node:module';
+import ts from 'typescript';
+const require=createRequire(import.meta.url);
+function load(file,mocks){const m=new Module(file);m.require=n=>Object.hasOwn(mocks,n)?mocks[n]:require(n);m._compile(ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);return m.exports;}
+const id='11111111-1111-4111-8111-111111111111';
+test('admin guard uses verified ID allowlist and rejects metadata claims',async()=>{const old=process.env.ADMIN_USER_IDS;try{process.env.ADMIN_USER_IDS=id;let userId='unapproved';const guard=load('src/lib/auth/require-admin.ts',{'server-only':{},'next/navigation':{notFound(){throw Error('not-found');}},'./require-user':{requireUser:async()=>({userId,user:{user_metadata:{admin:true}}})}});assert.equal(guard.isAdminUser(id),true);await assert.rejects(guard.requireAdmin(),/not-found/);userId=id;assert.equal((await guard.requireAdmin()).userId,id);}finally{if(old===undefined)delete process.env.ADMIN_USER_IDS;else process.env.ADMIN_USER_IDS=old;}});
+function actionHarness({deny=false,error=null,data={id}}={}){const calls=[];const query={update(value){calls.push(value);return this;},eq(key,value){calls.push([key,value]);return this;},select(){return this;},maybeSingle:async()=>({data,error})};return {calls,...load('src/app/admin/orders/actions.ts',{'next/cache':{revalidatePath:p=>calls.push(p)},'@/lib/auth/require-admin':{requireAdmin:async writable=>{calls.push(['auth',writable]);if(deny)throw Error('denied');}},'@/lib/checkout/admin-orders':{validOrderId:value=>value===id,adminDatabase:()=>{calls.push('database');return {from:()=>query};}}})};}
+const form=()=>{const f=new FormData();f.set('orderId',id);f.set('confirm','yes');return f;};
+test('cancellation authorizes before database access',async()=>{const h=actionHarness({deny:true});await assert.rejects(h.cancelUnpaidRequest({},form()),/denied/);assert.deepEqual(h.calls,[['auth',true]]);});
+test('cancellation rejects missing confirmation and duplicate identifiers',async()=>{for(const f of [new FormData(),(()=>{const f=form();f.append('orderId',id);return f;})()]){const h=actionHarness();assert.equal((await h.cancelUnpaidRequest({},f)).status,'error');assert(!h.calls.includes('database'));}});
+test('cancellation updates only the selected awaiting-payment request',async()=>{const h=actionHarness();assert.equal((await h.cancelUnpaidRequest({},form())).status,'success');assert.deepEqual(h.calls.slice(0,5),[['auth',true],'database',{status:'cancelled'},['id',id],['status','awaiting_payment']]);});
+test('changed requests and database errors cannot report successful cancellation',async()=>{for(const options of [{data:null},{error:{message:'secret-error'}}]){const h=actionHarness(options);const result=await h.cancelUnpaidRequest({},form());assert.equal(result.status,'error');assert(!result.message.includes('secret-error'));assert(!h.calls.includes('/admin/orders'));}});

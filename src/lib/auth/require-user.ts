@@ -7,7 +7,7 @@ export async function requireUser(writableCookies = false) {
   try {
     const client = await createClient({ writableCookies });
     const { data, error } = await client.auth.getUser();
-    if (!error && data.user?.id) return { client, userId: data.user.id };
+    if (!error && data.user?.id) return { client, userId: data.user.id, user: data.user };
   } catch {
     // Fail closed without exposing Auth errors or request credentials.
   }

@@ -32,7 +32,7 @@ function harness({ user = { id: 'synthetic-user-a', metadata: 'private-metadata'
     'server-only': {}, '@/lib/supabase/server': { createClient: async () => client },
     'next/navigation': { redirect: destination => { throw Object.assign(Error('redirect'), { destination }); } },
   });
-  const page = load('src/app/account/page.tsx', { '@/lib/auth/require-user': helper });
+  const page = load('src/app/account/page.tsx', { '@/lib/auth/validation': load('src/lib/auth/validation.ts', {'@/lib/delivery':load('src/lib/delivery.ts',{})}), '@/lib/auth/require-admin': { isAdminUser: () => false }, '@/lib/auth/require-user': helper, '@/components/auth/profile-form': { ProfileForm: () => null } });
   return { calls, page, helper, render: async props => renderToStaticMarkup(await page.default(props)) };
 }
 test('anonymous request redirects to fixed login with zero private reads', async () => {
@@ -66,9 +66,9 @@ test('query error and thrown failure never expose database internals', async () 
 });
 test('null fields use safe empty states', async () => {
   const html = await harness({ profile: { full_name: null, phone: null } }).render();
-  assert.equal((html.match(/Not provided/g) || []).length, 2);
+  assert.equal((html.match(/Not provided/g) || []).length, 3);
 });
-test('only name and phone render; extra identity/session fields never serialize', async () => {
+test('only public account fields render; extra identity/session fields never serialize', async () => {
   const html = await harness({ profile: { full_name: 'Synthetic Fan', phone: 'Synthetic phone', id: 'synthetic-user-a', session: 'synthetic-session', access_token: 'synthetic-token', metadata: 'private-metadata' } }).render();
   assert.match(html, /Synthetic phone/); assert.doesNotMatch(html, /synthetic-user-a|synthetic-session|synthetic-token|private-metadata/);
 });
@@ -94,3 +94,16 @@ test('repository RLS ties profile reads to auth.uid and denies anon grants', () 
   assert.match(sql, /revoke all on table public.products, public.profiles,[\s\S]*?from public, anon, authenticated;/);
   assert.doesNotMatch(sql, /grant select on table public.profiles[^;]*to anon/);
 });
+
+test('profile editing only updates verified own id and allowed fields', async () => {
+ const calls=[];
+ const actions=load('src/app/account/actions.ts',{'@/lib/auth/validation':load('src/lib/auth/validation.ts',{'@/lib/delivery':load('src/lib/delivery.ts',{})}),'next/cache':{revalidatePath:p=>calls.push(p)},'@/lib/auth/require-user':{requireUser:async()=>({userId:'own-user',client:{from:table=>({update:fields=>({eq:(key,id)=>{calls.push({table,fields,key,id});return {select:()=>({maybeSingle:async()=>({data:{id},error:null})})};}})})}})}});
+ const form=new FormData();form.set('full_name',' Test Fan ');form.set('phone','+234 801 234 5678');form.set('id','other-user');
+ const result=await actions.saveProfile({},form);assert.equal(result.status,'success');assert.deepEqual(calls[0],{table:'profiles',fields:{full_name:'Test Fan',phone:'+234 801 234 5678'},key:'id',id:'own-user'});
+});
+test('profile editing rejects invalid phone before database access', async()=>{
+ const actions=load('src/app/account/actions.ts',{'@/lib/auth/validation':load('src/lib/auth/validation.ts',{'@/lib/delivery':load('src/lib/delivery.ts',{})}),'next/cache':{},'@/lib/auth/require-user':{requireUser:async()=>({userId:'own-user',client:{from:()=>{throw Error('must not query');}}})}});
+ const form=new FormData();form.set('full_name','Fan');form.set('phone','invalid');assert.equal((await actions.saveProfile({},form)).status,'error');
+});
+
+ test('account renders registered address as text and ignores privilege metadata',async()=>{const h=harness({user:{id:'synthetic-user-a',user_metadata:{full_name:'Sample Fan',phone:'+2348000000000',address:'Sample Street <b>example</b>',role:'admin'}}});const html=await h.render();assert.match(html,/Sample Street &lt;b&gt;example&lt;\/b&gt;/);assert.doesNotMatch(html,/Manage products/);});

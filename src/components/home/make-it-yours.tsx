@@ -1,10 +1,9 @@
 
-import { Heading, Icon, MarketingArtwork, CustomiseSteps, LinkButton, PageContainer, Section, Stack, Text } from "@sd/ui";
+import { Heading, Icon, MarketingArtwork, CustomiseSteps, LinkButton, Section, Stack, Text } from "@sd/ui";
 
 export function MakeItYours() {
   return (
     <Section id="make-it-yours" width="full-bleed" tone="inverse" spacing="editorial" aria-labelledby="make-it-yours-heading">
-      <PageContainer>
         <div id="make-it-yours-layout">
           <div id="make-it-yours-copy">
             <Stack gap="6">
@@ -17,7 +16,6 @@ export function MakeItYours() {
           </div>
           <MarketingArtwork kind="banner" /><CustomiseSteps />
         </div>
-      </PageContainer>
     </Section>
   );
 }

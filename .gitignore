@@ -43,3 +43,9 @@ next-env.d.ts
 
 # Local verification output
 /work/
+
+/temp-product-images/
+
+/public/campaigns/alex-iwobi-hero-review.jpg
+
+/docs/hero-photo-review.md

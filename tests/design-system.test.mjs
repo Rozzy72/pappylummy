@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
@@ -128,7 +129,7 @@ test("style guard limits editorial exception and retains raw colour/style restri
 });
 test("actual Tailwind/PostCSS compilation resolves foundation tokens and variants", async () => {
   const result = await postcss([tailwind({ optimize: false })]).process(css, {
-    from: new URL("../src/app/globals.css", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
+    from: fileURLToPath(new URL("../src/app/globals.css", import.meta.url)),
   });
   assert.equal(result.warnings().length, 0);
   for (const selector of [".bg-media", ".border-strong", ".aspect-portrait", ".sd-main", ".sd-type-display-xl"])

@@ -106,6 +106,7 @@ export function CartContents({ products }: { products: Product[] | null }) {
               Delivery is not included. Checkout is coming soon; no order will
               be placed.
             </Text>
+            <Text look="small" muted>No sign-in required. Continue to the order preview as a guest.</Text>
             {!allAvailable && (
               <Text role="status">
                 Resolve unavailable selections before ordering. They are
@@ -114,7 +115,7 @@ export function CartContents({ products }: { products: Product[] | null }) {
             )}
             {allAvailable && (
               <LinkButton href="/checkout" fullWidth>
-                Review order preview →
+                Continue as guest →
               </LinkButton>
             )}
             <LinkButton href="/shop" fullWidth variant="surface">

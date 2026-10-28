@@ -196,13 +196,16 @@ export function Grid({
   children,
   ...props
 }: Clean<React.HTMLAttributes<HTMLDivElement>> & {
-  layout?: "products" | "split" | "three" | "filters";
+  layout?: "products" | "split" | "three" | "filters" | "form" | "single" | "registration";
 }) {
   return (
     <div
       className={join(
         "grid min-w-0 gap-s6",
         {
+          registration: "lg:grid-cols-2 lg:gap-s9 [&>*:first-child]:order-2 [&>*:last-child]:order-1 lg:[&>*:first-child]:order-1 lg:[&>*:last-child]:order-2",
+          single: "grid-cols-1",
+          form: "sm:grid-cols-2",
           products: "grid-cols-2 md:grid-cols-3 xl:grid-cols-4",
           split: "lg:grid-cols-2 lg:gap-s9",
           three: "md:grid-cols-3",
@@ -718,3 +721,11 @@ export function JerseyPhotoPreview({jersey,name,number}:{jersey:LetteringArtwork
 
 
 export function PurchaseActions({children}:React.PropsWithChildren){return <div className="pl-purchase-actions">{children}</div>;}
+
+/** Club discovery uses a compact editorial header and a single clear card destination. */
+export function ClubDirectoryHeader({ children }: React.PropsWithChildren) {
+  return <header className="pl-club-directory-header">{children}</header>;
+}
+export function ClubCollectionCard({ href, children }: React.PropsWithChildren<{ href: string }>) {
+  return <Link href={href} className="pl-club-collection-card">{children}</Link>;
+}

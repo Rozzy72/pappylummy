@@ -95,12 +95,13 @@ export function ProductActions({ product }: ProductActionsProps) {
         </fieldset>
         <Button
           type="button"
-          disabled={!hydrated || !canSelect || !selectedSize || (custom&&!personalization)}
+          disabled={!hydrated || !canSelect}
           fullWidth
           size="3"
           aria-describedby={messageId}
           onClick={() => {
-            if (!selectedSize || (custom&&!personalization)) return;
+            if (!selectedSize) { setFeedback("Please select your jersey size above, then add it to your bag."); return; }
+            if (custom && !personalization) { setFeedback("Please enter a valid name and number, or switch off name and number printing."); return; }
             const added = addItem(product, selectedSize, quantity, personalization ?? undefined);
             setFeedback(
               added
@@ -120,8 +121,9 @@ export function ProductActions({ product }: ProductActionsProps) {
                 ? "Loading your cart…"
                 : !selectedSize
                   ? "Select a size to add this jersey to your cart."
-                  : `Maximum ${maxQuantity} per product and size in your cart.`}
+                  : custom && !personalization ? "Enter your name and number to add this personalised jersey." : `Maximum ${maxQuantity} per product and size in your cart.`}
         </Text>
+        <Text look="small" muted>No account required. You can shop and use your bag as a guest.</Text>
         <Text role="status" aria-atomic="true" look="small">
           {feedback}
         </Text>

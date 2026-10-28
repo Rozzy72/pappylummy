@@ -246,7 +246,12 @@ test('editorial identity strip offers real Nigeria, club and studio journeys wit
  assert.doesNotMatch(markup,/best.?seller|official|licensed|same.day|countdown/i);
 });
 
-test("card size controls expose only live product sizes and start without a selection",()=>{
- const {load,products}=presentationHarness();const Actions=load("src/components/product/product-card-actions.tsx").ProductCardActions;const product={...products[0],sizes:["S","L"],inStock:true};const html=renderToStaticMarkup(h(Actions,{product}));assert.match(html,/Add to Cart/);assert.match(html,/Size for/);assert.equal((html.match(/aria-pressed="false"/g)||[]).length,2);assert.doesNotMatch(html,/aria-pressed="true"/);assert.match(html,/>Add to Cart<\/button>/);assert.match(html,/<button[^>]*disabled=""[^>]*>Add to Cart/);
+test("product cards defer size choice to the product page",()=>{
+ const {load,products}=presentationHarness();const product={...products[0],slug:"arsenal-home",sizes:["S","L"],inStock:true};
+ const html=renderToStaticMarkup(h(load("src/components/product/product-card-actions.tsx").ProductCardActions,{product}));
+ assert.match(html,/href="\/product\/arsenal-home"/);assert.match(html,/Choose options/);assert.doesNotMatch(html,/<fieldset|aria-pressed|Add to Cart/);
 });
-test("out-of-stock cards cannot select a size or add to cart",()=>{const {load,products}=presentationHarness();const html=renderToStaticMarkup(h(load("src/components/product/product-card-actions.tsx").ProductCardActions,{product:{...products[0],inStock:false}}));assert.match(html,/<fieldset disabled=""/);assert.match(html,/Out of stock/);});
+test("unavailable cards cannot offer a purchase action",()=>{
+ const {load,products}=presentationHarness();const Actions=load("src/components/product/product-card-actions.tsx").ProductCardActions;
+ for(const product of [{...products[0],inStock:false},{...products[0],inStock:true,sizes:[]}]){const html=renderToStaticMarkup(h(Actions,{product}));assert.doesNotMatch(html,/<a|<button|<fieldset/);assert.match(html,/Out of stock|No sizes available/);}
+});

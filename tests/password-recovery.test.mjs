@@ -10,7 +10,7 @@ function load(file, mocks={}) {
   const m=new Module(file);m.require=name=>name==='@sd/ui'?loadUi():Object.hasOwn(mocks,name)?mocks[name]:require(name);
   m._compile(ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,file);return m.exports;
 }
-const validation=load('src/lib/auth/validation.ts');
+const validation=load('src/lib/auth/validation.ts', {'@/lib/delivery':load('src/lib/delivery.ts',{})});
 const idle={status:'idle',message:''};
 const redirect=destination=>{throw Object.assign(Error('redirect'),{destination});};
 function form(key,value){const f=new FormData();f.set(key,value);return f;}
@@ -191,4 +191,18 @@ test('success feedback is identical for missing accounts and failures and exclud
     assert.deepEqual(feedback.props,recoveryFeedback(expected).props);
     assert.doesNotMatch(JSON.stringify(feedback.props),/example.test|synthetic|access_token|userId|cookie|session/);
   }
+});
+
+test('recovery token verification is recovery-only and uses fixed destination', async()=>{
+ const calls=[];
+ const route=load('src/app/auth/recovery/route.ts',{'@/lib/auth/validation':validation,'@/lib/supabase/server':{createClient:async()=>({auth:{verifyOtp:async input=>{calls.push(input);return {data:{session:{}},error:null};}}})}});
+ const token='a'.repeat(56);
+ const response=await route.GET(callbackRequest('token_hash='+token+'&type=recovery'));
+ assert.equal(response.headers.get('location'),'/reset-password');assert.deepEqual(calls,[{token_hash:token,type:'recovery'}]);assert(![...response.headers].join('').includes(token));
+ for(const query of ['token_hash='+token+'&type=email','token_hash='+token+'&type=recovery&next=/account','token_hash=bad&type=recovery','token_hash='+token+'&token_hash='+token+'&type=recovery'])await route.GET(callbackRequest(query));
+ assert.equal(calls.length,1);
+});
+test('invalid recovery token cannot create a reset session',async()=>{
+ const route=load('src/app/auth/recovery/route.ts',{'@/lib/auth/validation':validation,'@/lib/supabase/server':{createClient:async()=>({auth:{verifyOtp:async()=>({data:{session:null},error:{message:'private'}})}})}});
+ const response=await route.GET(callbackRequest('token_hash='+'b'.repeat(56)+'&type=recovery'));assert.equal(response.headers.get('location'),'/login?recovery=failed');assert.equal(response.headers.get('referrer-policy'),'no-referrer');assert.match(response.headers.get('cache-control'),/no-store/);
 });

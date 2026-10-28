@@ -10,10 +10,10 @@ for(const slug of ['nigeria-home','arsenal-home','barcelona-home']) for(const na
   const product=products.find(p=>p.slug===slug);
   const markup=renderToStaticMarkup(h(ProductLetteringPreview,{product,name,number}));
   assert(markup.includes(product.name));
-  assert.match(markup,/illustrative back template/);
-  assert.match(markup,/not a photograph or verified back design/);
+  assert.match(markup,/lettering preview/);
+  assert.doesNotMatch(markup,/Check Actual jersey/);
   assert(markup.includes('/illustrations/backs/'+slug+'-v1.png'));
-  assert.match(markup,/AI-generated illustration/);
+  assert.doesNotMatch(markup,/AI-generated illustration/);
   assert.match(markup,/text-anchor="middle"/);
   assert(markup.includes('>'+number+'</text>'));
   assert.equal((markup.match(/<image /g)||[]).length,1);
